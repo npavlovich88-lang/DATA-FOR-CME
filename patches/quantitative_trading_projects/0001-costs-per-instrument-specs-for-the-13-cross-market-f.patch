@@ -1,0 +1,423 @@
+From 1d4702c18eccb9a4abb935909b9fde1399ceee22 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 5 Oct 2026 16:16:49 +0000
+Subject: [PATCH] costs: per-instrument specs for the 13 cross-market futures
+
+Adds FUTURES_SPEC (tick, point value, assumed spread, exchange fee) for
+ES NQ RTY YM ZB ZN CL NG HG 6E 6B 6J SB, generalises CostModel to use
+each contract's own tick and exchange fee, and adds check_price_units to
+catch Yahoo quote-unit mismatches (SB cents/lb, 6J USD per yen).
+MES/MNQ behaviour is unchanged; commission still has no default, with a
+named IBKR reference rate available via CostModel.for_reference_broker.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PXmFtRfwPkTsDreNDGDS7F
+---
+ src/quant/costs.py          | 223 ++++++++++++++++++++++++++++++++++--
+ tests/test_costs_futures.py | 104 +++++++++++++++++
+ 2 files changed, 315 insertions(+), 12 deletions(-)
+ create mode 100644 tests/test_costs_futures.py
+
+diff --git a/src/quant/costs.py b/src/quant/costs.py
+index 0e31d9a..ad54b85 100644
+--- a/src/quant/costs.py
++++ b/src/quant/costs.py
+@@ -173,6 +173,157 @@ PROP_PROVENANCE = {
+ }
+ 
+ 
++# --------------------------------------------------------------------------- cross-market
++# The 13 full-size futures behind the Yahoo `=F` continuous series used by the cross-market
++# project. Yahoo's front-month `=F` tickers are the FULL-SIZE contracts, not micros -- ES=F is
++# the $50 E-mini, not the $5 MES -- so these are the specs that turn a price change into dollars.
++#
++# WHAT IS PUBLISHED AND WHAT IS ASSUMED -- they are not the same quality of number
++#
++#   tick, point value   exchange contract specifications. Fixed, checkable, not in doubt.
++#   exchange fee        CME / ICE non-member rate per side, via broker pass-through schedules.
++#                       Re-verify; CME announced fee changes effective 2026-10-01.
++#   spread              ASSUMED, NOT MEASURED. There is no level-1 data for these 13 markets in
++#                       this project, unlike MES/MNQ above. Values are one tick for the deep
++#                       front months and TWO ticks wherever there is a reason to doubt one:
++#                         * 6E and 6J halved their minimum tick in 2019, so through the whole
++#                           2000-2014 train window one old tick = two current ticks;
++#                         * 6B is the thinnest of the three FX contracts;
++#                         * NG and HG front months are routinely wider than one tick outside
++#                           the most active hours, and HG's data is provisional anyway.
++#                       Early-2000s spreads on everything were wider than today. Report every
++#                       result at 1x AND at a cost multiple, never at 1x alone.
++#   slippage            none beyond the spread by default. No book data exists for these
++#                       markets; a measured table like SLIPPAGE_TICKS_BY_SIZE would be needed
++#                       before any size-dependent claim. Pass `slippage_ticks` to stress it.
++#
++# Price units must match Yahoo's quote convention or every P&L is off by a factor of 100:
++# SB is quoted in CENTS per lb (point value $1,120 per cent), HG in DOLLARS per lb, 6J in USD
++# per yen (~0.007), ZB/ZN in points of par with 32nds as decimals. `check_price_units` asserts
++# the series sits in the range the convention implies; run it on every load (standing check 15).
++
++
++@dataclass(frozen=True)
++class ContractSpec:
++    root: str
++    name: str
++    exchange: str
++    tick: float  # minimum price increment, in Yahoo quote units
++    point_value: float  # USD per 1.0 move in Yahoo quote units
++    spread_ticks: float  # ASSUMED typical front-month spread, see above
++    exchange_fee_per_side: float  # USD, non-member, exchange + clearing
++    quote_unit: str
++    price_range: tuple[float, float]  # plausible Yahoo closes 2000-2026, for the units check
++
++    @property
++    def tick_value(self) -> float:
++        return self.tick * self.point_value
++
++
++FUTURES_SPEC: dict[str, ContractSpec] = {
++    s.root: s
++    for s in (
++        # equity index ---------------------------------------------------------------- CME/CBOT
++        ContractSpec("ES", "E-mini S&P 500", "CME", 0.25, 50.0, 1, 1.38, "index pts", (500, 9_000)),
++        ContractSpec(
++            "NQ", "E-mini Nasdaq-100", "CME", 0.25, 20.0, 1, 1.38, "index pts", (700, 35_000)
++        ),
++        ContractSpec(
++            "RTY", "E-mini Russell 2000", "CME", 0.10, 50.0, 1, 1.38, "index pts", (800, 3_500)
++        ),
++        ContractSpec(
++            "YM", "E-mini Dow ($5)", "CBOT", 1.0, 5.0, 1, 1.38, "index pts", (5_000, 60_000)
++        ),
++        # rates ----------------------------------------------------------------------------- CBOT
++        ContractSpec(
++            "ZB", "30-year T-bond", "CBOT", 1 / 32, 1_000.0, 1, 0.87, "pts of par", (85, 210)
++        ),
++        ContractSpec(
++            "ZN", "10-year T-note", "CBOT", 1 / 64, 1_000.0, 1, 0.87, "pts of par", (85, 145)
++        ),
++        # energy --------------------------------------------------------------------------- NYMEX
++        ContractSpec("CL", "WTI crude oil", "NYMEX", 0.01, 1_000.0, 1, 1.60, "USD/bbl", (-45, 160)),
++        ContractSpec(
++            "NG", "Henry Hub natural gas", "NYMEX", 0.001, 10_000.0, 2, 1.60, "USD/MMBtu", (1, 17)
++        ),
++        # metals --------------------------------------------------------------------------- COMEX
++        ContractSpec("HG", "Copper", "COMEX", 0.0005, 25_000.0, 2, 1.60, "USD/lb", (0.5, 7)),
++        # FX --------------------------------------------------------------------------------- CME
++        ContractSpec("6E", "Euro FX", "CME", 0.00005, 125_000.0, 2, 1.60, "USD/EUR", (0.80, 1.65)),
++        ContractSpec(
++            "6B", "British pound", "CME", 0.0001, 62_500.0, 2, 1.60, "USD/GBP", (1.00, 2.15)
++        ),
++        ContractSpec(
++            "6J",
++            "Japanese yen",
++            "CME",
++            0.0000005,
++            12_500_000.0,
++            2,
++            1.60,
++            "USD/JPY",
++            (0.0055, 0.0140),
++        ),
++        # ags -------------------------------------------------------------------------- ICE US
++        ContractSpec(
++            "SB", "Sugar No. 11", "ICE US", 0.01, 1_120.0, 1, 2.00, "US cents/lb", (3, 40)
++        ),
++    )
++}
++
++FUTURES_PROVENANCE = {
++    "contract specs": "CME Group and ICE Futures U.S. contract specifications (tick, multiplier). "
++    "6J tick 0.0000005 and 6E tick 0.00005 are the post-2019 values.",
++    "exchange fees": "non-member per-side rates via broker pass-through schedules (TradeStation, "
++    "Interactive Brokers CME page), searched 2026-10-05; the CME and broker pages themselves were "
++    "unreachable from the research container, so these are search-snippet figures: E-mini equity "
++    "$1.38, Treasury $0.87 (ZB quoted, ZN assumed equal), NYMEX/COMEX $1.60 (CL quoted variously "
++    "$1.50/$1.60, $1.60 taken), FX $1.60 (6E quoted, 6B/6J assumed equal), ICE Sugar No. 11 "
++    "$2.00 screen fee (ICE 2016 schedule, the latest found). Verify at cmegroup.com/company/"
++    "clearing-fees.html and theice.com/fees -- CME changed fees effective 2026-10-01.",
++    "spread": "ASSUMED one or two ticks, not measured; see module notes.",
++}
++
++# A retail reference rate, NOT a default -- CostModel still refuses to choose a commission.
++# Interactive Brokers' fixed futures commission, $0.85 per contract per side, is the usual
++# benchmark a self-directed account would actually pay; tiered pricing runs lower at volume.
++# Named so that every result costed with it says so, and so it can be replaced in one place.
++REFERENCE_COMMISSION_PER_SIDE = 0.85
++REFERENCE_COMMISSION_PROVENANCE = (
++    "Interactive Brokers fixed-rate futures commission, $0.85/contract/side, ex exchange and "
++    "regulatory fees. A reference for an undecided account, not a rate anyone has agreed to."
++)
++
++POINT_VALUE.update({r: s.point_value for r, s in FUTURES_SPEC.items()})
++TICK_SIZE = {"MES": TICK, "MNQ": TICK, **{r: s.tick for r, s in FUTURES_SPEC.items()}}
++
++
++def root(symbol: str) -> str:
++    """'ES=F' -> 'ES'. Accepts the Yahoo ticker or the bare root."""
++    return symbol.upper().removesuffix("=F")
++
++
++def check_price_units(symbol: str, prices) -> None:
++    """Fail loudly if a price series is not in the units its point value assumes.
++
++    The failure this catches is silent and total: SB quoted in dollars instead of cents, or a
++    6J series quoted per 100 yen, would scale every P&L by 100 and nothing downstream would look
++    wrong. The median, not the extremes, is checked, so a few bad prints do not trip it.
++    """
++    spec = FUTURES_SPEC[root(symbol)]
++    p = np.asarray(prices, dtype=float)
++    p = p[np.isfinite(p)]
++    if not len(p):
++        raise ValueError(f"{symbol}: no finite prices to check")
++    lo, hi = spec.price_range
++    med = float(np.median(p))
++    if not lo <= med <= hi:
++        raise ValueError(
++            f"{symbol}: median price {med:g} outside {lo:g}..{hi:g} expected for "
++            f"{spec.quote_unit} -- point value ${spec.point_value:,.2f} would misprice every P&L"
++        )
++
++
+ @dataclass(frozen=True)
+ class CostModel:
+     """Round-turn cost for one contract, decomposed.
+@@ -187,7 +338,7 @@ class CostModel:
+     contracts: int = 1  # drives the measured, size-dependent book-walk slippage
+     spread_points: float | None = None  # None -> use the measured value
+     slippage_ticks: float | None = None  # None -> measured for `contracts`; a float overrides
+-    exchange_fee_per_side: float = EXCHANGE_FEE_PER_SIDE
++    exchange_fee_per_side: float | None = None  # None -> micro rate, or FUTURES_SPEC's
+     nfa_fee_per_side: float = NFA_FEE_PER_SIDE
+ 
+     @classmethod
+@@ -204,22 +355,44 @@ class CostModel:
+             comm = PROP_COMMISSION_PER_SIDE[firm]
+         return cls(symbol=symbol, commission_per_side=comm, **kw)
+ 
++    @classmethod
++    def for_reference_broker(cls, symbol: str, **kw) -> CostModel:
++        """Cost model at REFERENCE_COMMISSION_PER_SIDE. Say so wherever the result is quoted."""
++        return cls(symbol=root(symbol), commission_per_side=REFERENCE_COMMISSION_PER_SIDE, **kw)
++
++    def __post_init__(self) -> None:
++        if self.symbol not in POINT_VALUE:
++            raise KeyError(f"no contract spec for {self.symbol!r}; pass the root, e.g. 'ES'")
++
+     @property
+     def point_value(self) -> float:
+         return POINT_VALUE[self.symbol]
+ 
++    @property
++    def tick_size(self) -> float:
++        return TICK_SIZE[self.symbol]
++
++    @property
++    def exchange_fee(self) -> float:
++        if self.exchange_fee_per_side is not None:
++            return self.exchange_fee_per_side
++        if self.symbol in FUTURES_SPEC:
++            return FUTURES_SPEC[self.symbol].exchange_fee_per_side
++        return EXCHANGE_FEE_PER_SIDE
++
+     @property
+     def spread(self) -> float:
+-        return (
+-            MEASURED_SPREAD_POINTS[self.symbol]
+-            if self.spread_points is None
+-            else self.spread_points
+-        )
++        if self.spread_points is not None:
++            return self.spread_points
++        if self.symbol in MEASURED_SPREAD_POINTS:
++            return MEASURED_SPREAD_POINTS[self.symbol]
++        spec = FUTURES_SPEC[self.symbol]
++        return spec.spread_ticks * spec.tick
+ 
+     @property
+     def fees_usd(self) -> float:
+         """Commission + exchange + regulatory, both sides."""
+-        return 2 * (self.commission_per_side + self.exchange_fee_per_side + self.nfa_fee_per_side)
++        return 2 * (self.commission_per_side + self.exchange_fee + self.nfa_fee_per_side)
+ 
+     @property
+     def spread_usd(self) -> float:
+@@ -230,12 +403,14 @@ class CostModel:
+     def slippage_per_side_ticks(self) -> float:
+         if self.slippage_ticks is not None:
+             return self.slippage_ticks
++        if self.symbol not in SLIPPAGE_TICKS_BY_SIZE:
++            return 0.0  # unmeasured for this market; stress it via slippage_ticks
+         return slippage_ticks_for_size(self.symbol, self.contracts)
+ 
+     @property
+     def slippage_usd(self) -> float:
+         """Per contract, both sides. Charged on top of the spread, never instead of it."""
+-        return 2 * self.slippage_per_side_ticks * TICK * self.point_value
++        return 2 * self.slippage_per_side_ticks * self.tick_size * self.point_value
+ 
+     @property
+     def round_turn_usd(self) -> float:
+@@ -250,9 +425,9 @@ class CostModel:
+         p = self.point_value
+         rows = [
+             ("commission", 2 * self.commission_per_side),
+-            ("exchange fee", 2 * self.exchange_fee_per_side),
++            ("exchange fee", 2 * self.exchange_fee),
+             ("NFA fee", 2 * self.nfa_fee_per_side),
+-            (f"spread ({self.spread:.2f} pts)", self.spread_usd),
++            (f"spread ({self.spread / self.tick_size:g} tk)", self.spread_usd),
+         ]
+         if self.slippage_usd:
+             rows.append(
+@@ -263,13 +438,37 @@ class CostModel:
+             )
+         w = max(len(r[0]) for r in rows)
+         out = [f"{self.symbol} round-turn cost, 1 contract (point value ${p:.2f})"]
+-        out += [f"  {n:<{w}}  ${v:>6.2f}   {v / p:>6.3f} pts" for n, v in rows]
++        out += [f"  {n:<{w}}  ${v:>6.2f}   {v / self.tick_size / p:>6.3f} tk" for n, v in rows]
+         out.append(
+-            f"  {'TOTAL':<{w}}  ${self.round_turn_usd:>6.2f}   {self.round_turn_points:>6.3f} pts"
++            f"  {'TOTAL':<{w}}  ${self.round_turn_usd:>6.2f}   "
++            f"{self.round_turn_points / self.tick_size:>6.3f} tk"
+         )
+         return "\n".join(out)
+ 
+ 
++def futures_cost_table(commission_per_side: float = REFERENCE_COMMISSION_PER_SIDE) -> pd.DataFrame:
++    """One row per cross-market contract: specs and the round-turn cost they imply."""
++    rows = []
++    for r, s in FUTURES_SPEC.items():
++        c = CostModel(symbol=r, commission_per_side=commission_per_side)
++        rows.append(
++            dict(
++                root=r,
++                exchange=s.exchange,
++                tick=s.tick,
++                point_value=s.point_value,
++                tick_value=s.tick_value,
++                spread_ticks=s.spread_ticks,
++                spread_usd=c.spread_usd,
++                fees_rt_usd=c.fees_usd,
++                commission_rt_usd=2 * commission_per_side,
++                round_turn_usd=c.round_turn_usd,
++                round_turn_ticks=c.round_turn_points / s.tick,
++            )
++        )
++    return pd.DataFrame(rows).set_index("root")
++
++
+ # --------------------------------------------------------------------------- measurement
+ QUOTE_COLS = ["raw_timestamp", "level", "type", "price", "volume", "depth", "action"]
+ 
+diff --git a/tests/test_costs_futures.py b/tests/test_costs_futures.py
+new file mode 100644
+index 0000000..0efc3c0
+--- /dev/null
++++ b/tests/test_costs_futures.py
+@@ -0,0 +1,104 @@
++"""Cross-market contract specs: the numbers every futures P&L is multiplied by."""
++
++import numpy as np
++import pytest
++
++from quant.costs import (
++    EXCHANGE_FEE_PER_SIDE,
++    FUTURES_SPEC,
++    MEASURED_SPREAD_POINTS,
++    POINT_VALUE,
++    REFERENCE_COMMISSION_PER_SIDE,
++    CostModel,
++    check_price_units,
++    futures_cost_table,
++    root,
++)
++
++THIRTEEN = {"RTY", "ES", "CL", "ZB", "NQ", "SB", "ZN", "YM", "NG", "6E", "6B", "6J", "HG"}
++
++
++def test_all_thirteen_markets_have_a_spec():
++    assert set(FUTURES_SPEC) == THIRTEEN
++
++
++@pytest.mark.parametrize(
++    ("sym", "tick_value"),
++    [
++        # published exchange tick values -- if one of these drifts, the spec table is wrong
++        ("ES", 12.50),
++        ("NQ", 5.00),
++        ("RTY", 5.00),
++        ("YM", 5.00),
++        ("ZB", 31.25),
++        ("ZN", 15.625),
++        ("CL", 10.00),
++        ("NG", 10.00),
++        ("HG", 12.50),
++        ("6E", 6.25),
++        ("6B", 6.25),
++        ("6J", 6.25),
++        ("SB", 11.20),
++    ],
++)
++def test_tick_values_match_the_exchange(sym, tick_value):
++    assert FUTURES_SPEC[sym].tick_value == pytest.approx(tick_value)
++
++
++def test_yahoo_tickers_resolve_to_roots():
++    assert root("ES=F") == "ES"
++    assert root("6j=f") == "6J"
++    c = CostModel.for_reference_broker("CL=F")
++    assert c.symbol == "CL"
++    assert c.commission_per_side == REFERENCE_COMMISSION_PER_SIDE
++
++
++def test_commission_still_has_no_default_for_futures():
++    with pytest.raises(TypeError):
++        CostModel(symbol="ES")  # type: ignore[call-arg]
++
++
++def test_unknown_symbol_fails_at_construction():
++    with pytest.raises(KeyError):
++        CostModel(symbol="ES=F", commission_per_side=0.85)
++
++
++def test_futures_use_their_own_tick_and_exchange_fee():
++    c = CostModel(symbol="ZN", commission_per_side=0.0, nfa_fee_per_side=0.0)
++    assert c.tick_size == pytest.approx(1 / 64)
++    assert c.fees_usd == pytest.approx(2 * 0.87)
++    assert c.spread_usd == pytest.approx(15.625)
++    s = CostModel(symbol="ZN", commission_per_side=0.0, slippage_ticks=1.0)
++    assert s.slippage_usd == pytest.approx(2 * 15.625)
++
++
++def test_unmeasured_markets_carry_no_hidden_slippage():
++    assert CostModel(symbol="ES", commission_per_side=0.85, contracts=50).slippage_usd == 0.0
++
++
++def test_micros_are_unchanged():
++    """The MES/MNQ model must not move when the futures table is added."""
++    for sym in ("MES", "MNQ"):
++        c = CostModel(symbol=sym, commission_per_side=0.5)
++        assert c.spread == MEASURED_SPREAD_POINTS[sym]
++        assert c.exchange_fee == EXCHANGE_FEE_PER_SIDE
++        assert c.tick_size == 0.25
++    assert POINT_VALUE["MES"] == 5.0
++    assert POINT_VALUE["MNQ"] == 2.0
++
++
++def test_cost_table_components_sum():
++    t = futures_cost_table()
++    assert set(t.index) == THIRTEEN
++    np.testing.assert_allclose(t.round_turn_usd, t.spread_usd + t.fees_rt_usd)
++    # every market costs at least one tick plus fees -- the floor is the spread
++    assert (t.round_turn_ticks > 1.0).all()
++
++
++def test_units_check_catches_a_factor_of_100():
++    check_price_units("SB=F", [18.5, 19.0, 21.2])  # cents/lb: fine
++    with pytest.raises(ValueError, match="SB"):
++        check_price_units("SB=F", [0.185, 0.19, 0.212])  # dollars/lb: P&L off by 100x
++    check_price_units("6J", [0.0067, 0.0091])
++    with pytest.raises(ValueError, match="6J"):
++        check_price_units("6J", [0.67, 0.91])  # per-100-yen quote
+-- 
+2.43.0
+
