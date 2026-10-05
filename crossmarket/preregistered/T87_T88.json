@@ -1,0 +1,10 @@
+{
+  "tests": ["T87", "T88"],
+  "registered": "2026-10-05",
+  "data": "Yahoo =F daily, 13 markets, roll-cleaned + bad closes removed (intraday.load_daily_clean)",
+  "segments": {"train": "first bar .. 2014-12-31 (scored from 2002-01-01)", "validate": "2015-01-01 .. 2020-12-31", "holdout": "2021-01-01 .. last bar, LOCKED, not read"},
+  "strategies": "daily.py docstring, S1-S7, parameters as written there; no tuning",
+  "T87_calibration": "S1 tsmom_12m. Published Sharpe for a diversified futures basket after costs ~0.3-0.8. ~0.3-0.8 -> pipeline works; ~2 -> leakage, check rolls first; ~0 -> broken.",
+  "null": "200 month-block permutations, same order in every market, rule re-run on the shuffled clean index; per-strategy p and Westfall-Young min-p across the 7",
+  "validate_looks": "exactly two: S1 (calibration) and the S2-S7 strategy with the highest train Sharpe, chosen by the code before validate is read"
+}

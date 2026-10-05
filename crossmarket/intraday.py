@@ -37,7 +37,11 @@ import pathlib
 import numpy as np
 import pandas as pd
 
-from quant.data_splits import CM_INTRADAY_TRAIN_END, CM_INTRADAY_VALIDATE_END
+from quant.data_splits import (
+    CM_DAILY_TRAIN_END,
+    CM_INTRADAY_TRAIN_END,
+    CM_INTRADAY_VALIDATE_END,
+)
 
 DATA = pathlib.Path(os.environ.get("CROSSMARKET_DATA", pathlib.Path(__file__).parent / "data"))
 INTRADAY = ["ES", "NQ", "RTY", "YM", "ZB", "ZN", "CL", "NG", "HG", "6E", "6B", "6J"]  # no SB
@@ -87,6 +91,11 @@ def roll_window_days(sym: str, start: pd.Timestamp, end: pd.Timestamp) -> set:
                 )
             elif sym == "CL":
                 add(pd.Timestamp(y, m, 14), pd.Timestamp(y, m, 25))
+            elif sym == "SB" and m in (2, 4, 6, 9):  # ICE Sugar No. 11: H/K/N/V expire month-end
+                add(
+                    pd.Timestamp(y, m, 20),
+                    pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0) + pd.Timedelta(days=7),
+                )
             elif sym == "NG":
                 add(
                     pd.Timestamp(y, m, 19),
@@ -177,6 +186,13 @@ def load_daily_clean(sym: str) -> pd.DataFrame:
     d = pd.read_csv(DATA / f"{sym}_1d.csv", index_col=0)
     d.index = pd.to_datetime(d.index, utc=True).tz_convert(TZ).tz_localize(None).normalize()
     d = d[~d.index.duplicated(keep="last")].sort_index()
+    # a close more than 1% outside the bar's own high-low range is a bad print (6J 2001-12-17:
+    # 0.000783 for 0.00783, a decimal shift); treat it as missing BEFORE roll detection, or the
+    # snap-back the next day is mistaken for the roll
+    lo, hi = d[["low", "open"]].min(axis=1), d[["high", "open"]].max(axis=1)
+    badc = (d["close"] > hi * 1.01) | (d["close"] < lo * 0.99)
+    d.loc[badc, "close"] = np.nan
+    d["close"] = d["close"].ffill()
     pos = (d[["open", "close"]] > 0).all(axis=1) & (d["close"].shift() > 0)
     with np.errstate(invalid="ignore", divide="ignore"):
         gap = np.log(d["open"] / d["close"].shift()).where(pos)
@@ -187,6 +203,19 @@ def load_daily_clean(sym: str) -> pd.DataFrame:
     block = (win != win.shift()).cumsum()[win]
     roll_days = gap[win].abs().fillna(-1.0).groupby(block).idxmax()
     r.loc[roll_days] = r.loc[roll_days] - gap.loc[roll_days]
-    out = pd.DataFrame({"close": d["close"], "ret": r.fillna(0.0), "roll": d.index.isin(roll_days)})
+    r = r.fillna(0.0)
+    # bad prints: a close that jumps >8 robust sd and comes straight back the next day (6J
+    # 2001-12-17: +230% then -230%). The bar is treated as missing: its move is folded into the
+    # next day, so the two-day change is kept and the fictional round trip is not.
+    rt = r[r.index < pd.Timestamp(CM_DAILY_TRAIN_END)]
+    sd = 1.4826 * (rt - rt.median()).abs().median() if len(rt) > 100 else r.abs().median() * 1.4826
+    nxt = r.shift(-1)
+    spike = (r.abs() > 8 * sd) & ((r + nxt).abs() < 0.25 * r.abs())
+    for t in r.index[spike]:
+        i = r.index.get_loc(t)
+        r.iloc[i + 1] = r.iloc[i] + r.iloc[i + 1]
+        r.iloc[i] = 0.0
+    out = pd.DataFrame({"close": d["close"], "ret": r, "roll": d.index.isin(roll_days),
+                        "bad_print": spike.to_numpy() | badc.to_numpy()})
     out["clean_idx"] = np.exp(out["ret"].cumsum())
     return out
