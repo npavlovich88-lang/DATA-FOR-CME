@@ -65,8 +65,16 @@ def tema(x: pd.Series, span: int) -> pd.Series:
     return 3 * e1 - 3 * e2 + ema(e2, span)
 
 
-def build(sym: str, train_end: str) -> pd.DataFrame:
-    """One market's clean 1h bars with every indicator, the outcomes and the cost, train only."""
+ANCHOR_FREQ = {"W": "W-SUN", "M": "M", "Q": "Q"}  # W-SUN: Monday..Sunday sessions, one week
+ANCHOR_SKIP = {"W": 1, "M": RESET_SKIP_SESSIONS, "Q": 5}  # sessions unscored after each reset
+
+
+def build(sym: str, train_end: str, anchor: str = "M") -> pd.DataFrame:
+    """One market's clean 1h bars with every indicator, the outcomes and the cost, train only.
+
+    `anchor` sets where the VWAP and its bands reset: "W" weekly, "M" monthly (T82), "Q"
+    quarterly. `month` stays the calendar month whatever the anchor -- it keys the controls.
+    """
     raw = load_1h(sym)
     d = flag_1h(raw, sym)
     d = d[pd.to_datetime(d["session"]) < pd.Timestamp(train_end)].copy()  # cut by session
@@ -75,7 +83,8 @@ def build(sym: str, train_end: str) -> pd.DataFrame:
     tp = (d["high"] * a + d["low"] * a + ci) / 3
     v = d["volume"].where(~d["excluded"], 0.0).fillna(0.0)
     month = pd.to_datetime(d["session"]).dt.to_period("M")
-    g = month.to_numpy()
+    period = pd.to_datetime(d["session"]).dt.to_period(ANCHOR_FREQ[anchor])
+    g = period.to_numpy()
     cv = v.groupby(g).cumsum()
     vwap = (v * tp).groupby(g).cumsum() / cv
     ex2 = (v * tp**2).groupby(g).cumsum() / cv
@@ -84,6 +93,7 @@ def build(sym: str, train_end: str) -> pd.DataFrame:
     out["sym"] = sym
     out["session"] = pd.to_datetime(d["session"])
     out["month"] = month
+    out["period"] = period
     out["hour"] = d.index.hour
     out["c"] = ci
     out["vwap"] = vwap
@@ -91,9 +101,12 @@ def build(sym: str, train_end: str) -> pd.DataFrame:
     out["tema"] = tema(ci, 9)
     out["ema"] = ema(ci, 50)
     out["excluded"] = d["excluded"]
-    sess_no = out.groupby("month")["session"].transform(lambda s: s.rank(method="dense"))
+    sess_no = out.groupby("period")["session"].transform(lambda s: s.rank(method="dense"))
     out["scored"] = (
-        (sess_no > RESET_SKIP_SESSIONS) & ~out["excluded"] & np.isfinite(out["z"]) & (sigma > 0)
+        (sess_no > ANCHOR_SKIP[anchor])
+        & ~out["excluded"]
+        & np.isfinite(out["z"])
+        & (sigma > 0)
     )
     out.iloc[:300, out.columns.get_loc("scored")] = False  # EMA(50)/TEMA warm-up
     hvol = np.sqrt((d["ret"] ** 2).ewm(span=VOL_SPAN, min_periods=VOL_SPAN).mean())
