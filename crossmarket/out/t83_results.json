@@ -39,9 +39,9 @@
   },
   "mean_market_sharpe": -0.9305430791232637,
   "avg_pair_corr": 0.07678734402187842,
-  "null_p": 1.0,
+  "null_p": 0.63,
   "family_p": 1.0,
-  "null_median": -1.619098131641527
+  "null_median": -1.986143793753141
  },
  "W | reenter 1sd | hold 1s": {
   "days": 253,
@@ -83,9 +83,9 @@
   },
   "mean_market_sharpe": -1.0709863542028504,
   "avg_pair_corr": 0.07466124128793611,
-  "null_p": 1.0,
+  "null_p": 0.94,
   "family_p": 1.0,
-  "null_median": -0.34787439448720725
+  "null_median": -0.9341499614369411
  },
  "W | reenter 2sd | hold 4h": {
   "days": 253,
@@ -127,9 +127,9 @@
   },
   "mean_market_sharpe": -0.24524494942611316,
   "avg_pair_corr": 0.04306903739564102,
-  "null_p": 0.5,
+  "null_p": 0.245,
   "family_p": 1.0,
-  "null_median": -1.2990666033792901
+  "null_median": -1.3315201515090032
  },
  "W | reenter 2sd | hold 1s": {
   "days": 253,
@@ -171,9 +171,9 @@
   },
   "mean_market_sharpe": -0.16795722606339988,
   "avg_pair_corr": 0.08572834878840672,
-  "null_p": 0.5,
+  "null_p": 0.29,
   "family_p": 1.0,
-  "null_median": -0.0032087673836220243
+  "null_median": -0.9636694917807502
  },
  "W | breakout 1sd | hold 4h": {
   "days": 253,
@@ -215,9 +215,9 @@
   },
   "mean_market_sharpe": -0.5614332411422748,
   "avg_pair_corr": 0.07236289150101675,
-  "null_p": 0.0,
+  "null_p": 0.33,
   "family_p": 1.0,
-  "null_median": -2.4516243921931915
+  "null_median": -1.9484622130984341
  },
  "W | breakout 1sd | hold 1s": {
   "days": 253,
@@ -259,9 +259,9 @@
   },
   "mean_market_sharpe": 0.15454464356389883,
   "avg_pair_corr": 0.07843815502141593,
-  "null_p": 0.5,
-  "family_p": 1.0,
-  "null_median": 0.3349053510217555
+  "null_p": 0.275,
+  "family_p": 0.975,
+  "null_median": -0.24704389255498188
  },
  "W | reenter 1sd | recent TEMAxEMA cross | hold 4h": {
   "days": 253,
@@ -303,9 +303,9 @@
   },
   "mean_market_sharpe": 0.022510935800046077,
   "avg_pair_corr": -0.010657699081623118,
-  "null_p": 1.0,
+  "null_p": 0.7,
   "family_p": 1.0,
-  "null_median": 0.42994464932638576
+  "null_median": -0.25815683718296756
  },
  "W | reenter 1sd | recent TEMAxEMA cross | hold 1s": {
   "days": 253,
@@ -347,9 +347,9 @@
   },
   "mean_market_sharpe": -0.23104989664464792,
   "avg_pair_corr": 0.06996992173075589,
-  "null_p": 1.0,
+  "null_p": 0.805,
   "family_p": 1.0,
-  "null_median": 0.6097240634866777
+  "null_median": 0.08446357146077793
  },
  "M | reenter 1sd | hold 4h": {
   "days": 253,
@@ -391,9 +391,9 @@
   },
   "mean_market_sharpe": -0.23373792931436588,
   "avg_pair_corr": 0.0422224841869013,
-  "null_p": 0.0,
+  "null_p": 0.025,
   "family_p": 1.0,
-  "null_median": -2.2879046632907016
+  "null_median": -2.772657634675901
  },
  "M | reenter 1sd | hold 1s": {
   "days": 253,
@@ -435,9 +435,9 @@
   },
   "mean_market_sharpe": -0.24011485898512688,
   "avg_pair_corr": 0.08286631264393987,
-  "null_p": 0.0,
+  "null_p": 0.035,
   "family_p": 1.0,
-  "null_median": -2.4859391600224185
+  "null_median": -2.252748146485337
  },
  "M | reenter 2sd | hold 4h": {
   "days": 253,
@@ -479,9 +479,9 @@
   },
   "mean_market_sharpe": -0.73373921123889,
   "avg_pair_corr": 0.0370251360939145,
-  "null_p": 0.5,
+  "null_p": 0.565,
   "family_p": 1.0,
-  "null_median": -2.4595671746713412
+  "null_median": -1.9328104482542474
  },
  "M | reenter 2sd | hold 1s": {
   "days": 253,
@@ -523,9 +523,9 @@
   },
   "mean_market_sharpe": -0.4262952885644526,
   "avg_pair_corr": 0.07123549945314012,
-  "null_p": 0.0,
+  "null_p": 0.04,
   "family_p": 1.0,
-  "null_median": -2.7666877416037643
+  "null_median": -2.219229327872087
  },
  "M | breakout 1sd | hold 4h": {
   "days": 253,
@@ -567,9 +567,9 @@
   },
   "mean_market_sharpe": -0.8612108462472324,
   "avg_pair_corr": 0.020004039483051905,
-  "null_p": 1.0,
+  "null_p": 0.965,
   "family_p": 1.0,
-  "null_median": -0.8942267709881504
+  "null_median": -0.7886622249207567
  },
  "M | breakout 1sd | hold 1s": {
   "days": 253,
@@ -611,9 +611,9 @@
   },
   "mean_market_sharpe": -0.6561029203190616,
   "avg_pair_corr": 0.09357783085668066,
-  "null_p": 1.0,
+  "null_p": 0.995,
   "family_p": 1.0,
-  "null_median": 1.4089588736530485
+  "null_median": 1.1191956239525598
  },
  "M | reenter 1sd | recent TEMAxEMA cross | hold 4h": {
   "days": 253,
@@ -656,8 +656,8 @@
   "mean_market_sharpe": 0.5800896396681664,
   "avg_pair_corr": 0.013187349337600594,
   "null_p": 0.0,
-  "family_p": 1.0,
-  "null_median": -1.273738879851687
+  "family_p": 0.625,
+  "null_median": -1.6163046113469992
  },
  "M | reenter 1sd | recent TEMAxEMA cross | hold 1s": {
   "days": 253,
@@ -699,9 +699,9 @@
   },
   "mean_market_sharpe": 0.4178817936065973,
   "avg_pair_corr": 0.040628665940436764,
-  "null_p": 0.0,
-  "family_p": 0.0,
-  "null_median": -1.3713362691105253
+  "null_p": 0.005,
+  "family_p": 0.58,
+  "null_median": -1.4229078360575347
  },
  "Q | reenter 1sd | hold 4h": {
   "days": 253,
@@ -743,9 +743,9 @@
   },
   "mean_market_sharpe": -0.4781590144936125,
   "avg_pair_corr": 0.022687321829681643,
-  "null_p": 0.0,
+  "null_p": 0.16,
   "family_p": 1.0,
-  "null_median": -2.4556994778489742
+  "null_median": -2.2488367292807494
  },
  "Q | reenter 1sd | hold 1s": {
   "days": 253,
@@ -787,9 +787,9 @@
   },
   "mean_market_sharpe": -0.2990941730389525,
   "avg_pair_corr": 0.06406335381725066,
-  "null_p": 0.0,
+  "null_p": 0.115,
   "family_p": 1.0,
-  "null_median": -2.114104398901448
+  "null_median": -1.6453504402025603
  },
  "Q | reenter 2sd | hold 4h": {
   "days": 253,
@@ -831,9 +831,9 @@
   },
   "mean_market_sharpe": -0.625538306706671,
   "avg_pair_corr": 0.011429043712713423,
-  "null_p": 0.5,
+  "null_p": 0.585,
   "family_p": 1.0,
-  "null_median": -1.8344316513604082
+  "null_median": -1.9452764558156526
  },
  "Q | reenter 2sd | hold 1s": {
   "days": 253,
@@ -875,9 +875,9 @@
   },
   "mean_market_sharpe": -0.4659584057752213,
   "avg_pair_corr": 0.03452208655033053,
-  "null_p": 0.5,
+  "null_p": 0.07,
   "family_p": 1.0,
-  "null_median": -1.9849430700513189
+  "null_median": -2.456182589838435
  },
  "Q | breakout 1sd | hold 4h": {
   "days": 253,
@@ -921,7 +921,7 @@
   "avg_pair_corr": 0.008656322895178543,
   "null_p": 0.5,
   "family_p": 1.0,
-  "null_median": -0.8715651776918993
+  "null_median": -0.6804940302073066
  },
  "Q | breakout 1sd | hold 1s": {
   "days": 253,
@@ -963,9 +963,9 @@
   },
   "mean_market_sharpe": -0.003241807948483629,
   "avg_pair_corr": 0.09841791172205919,
-  "null_p": 1.0,
+  "null_p": 0.84,
   "family_p": 1.0,
-  "null_median": 0.5646147910219954
+  "null_median": 0.9225644728215451
  },
  "Q | reenter 1sd | recent TEMAxEMA cross | hold 4h": {
   "days": 253,
@@ -1007,9 +1007,9 @@
   },
   "mean_market_sharpe": 0.3043268804092623,
   "avg_pair_corr": 0.005781622056426789,
-  "null_p": 0.0,
-  "family_p": 1.0,
-  "null_median": -0.7621065274691291
+  "null_p": 0.07,
+  "family_p": 0.99,
+  "null_median": -0.9754034231418289
  },
  "Q | reenter 1sd | recent TEMAxEMA cross | hold 1s": {
   "days": 253,
@@ -1052,7 +1052,7 @@
   "mean_market_sharpe": 0.6234436262397334,
   "avg_pair_corr": 0.0450773622746101,
   "null_p": 0.0,
-  "family_p": 0.0,
-  "null_median": -1.6229885734919942
+  "family_p": 0.38,
+  "null_median": -0.6238694125229745
  }
 }

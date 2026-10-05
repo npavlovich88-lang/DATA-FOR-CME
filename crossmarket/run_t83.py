@@ -22,8 +22,9 @@ FIXED BEFORE ANY RESULT IS SEEN
                trade held into an excluded stretch -- the same engine as T80/T81
     controls   every cell re-simulated with its entries moved to random sessions of the same
                month by one permutation shared across markets, keeping market and hour, so
-               signals that bunch in calendar time stay bunched (checks 7, 11); family p is the
-               best of all 24 cells under the null
+               signals that bunch in calendar time stay bunched (checks 7, 11); family p two
+               ways: best Sharpe of all 24 cells under the null, and Westfall-Young min-p
+               (each cell against its own null, then best of 24)
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ ANCHORS = ("W", "M", "Q")
 RULES = ("reenter 1sd", "reenter 2sd", "breakout 1sd", "reenter 1sd | recent TEMAxEMA cross")
 HOLDS = {"4h": 4, "1s": 23}
 RISK = 0.0025  # one-session 1-sigma move per trade, fraction of capital
-N_NULL = int(os.environ.get("T83_NULL", "200"))
+N_NULL = int(os.environ.get("T83_NULL", "600"))
 
 
 def simulate(ev: np.ndarray, size: np.ndarray, hold: int) -> tuple[np.ndarray, np.ndarray]:
@@ -194,12 +195,23 @@ def main() -> None:
                     row[f"{a} | {rule} | hold {hk}"] = trend.sharpe(cell(markets, pev, rule, h)["port"])
         null_rows.append(row)
     null = pd.DataFrame(null_rows)
+    null.to_csv(OUT / "t83_null.csv", index=False)
     fam = null.max(axis=1)
+    # Westfall-Young min-p: each cell judged against ITS OWN null, then the family adjusts for
+    # the best of the 24. Needed because the timing null is not centred on zero: random entries
+    # lose to costs in most cells but keep month drift in the breakout cells, so a max-Sharpe
+    # family test is decided by whichever cells have the highest baseline, not the best signal.
+    ranks = null.rank(ascending=False, method="max")  # 1 = the best draw in its column
+    null_p = ranks / (len(null) + 1)
+    null_minp = null_p.min(axis=1)
     for name in res:
         sr = res[name]["sharpe"]
         res[name]["null_p"] = float((null[name] >= sr).mean())
         res[name]["family_p"] = float((fam >= sr).mean())
         res[name]["null_median"] = float(null[name].median())
+        p_obs = (1 + (null[name] >= sr).sum()) / (len(null) + 1)
+        res[name]["null_p_plus1"] = float(p_obs)
+        res[name]["family_p_minp"] = float((null_minp <= p_obs).mean())
     OUT.mkdir(exist_ok=True)
     (OUT / "t83_results.json").write_text(json.dumps(res, indent=1, default=float))
 
