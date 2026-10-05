@@ -92,13 +92,34 @@ def market_pnl(
     return pnl_from_weights(b, sym, w, cost_mult=cost_mult)
 
 
-def pnl_from_weights(b: pd.DataFrame, sym: str, w: pd.Series, *, cost_mult: float = 1.0):
-    """Net P&L of target weights `w` decided at each bar's close; w[t] earns bar t+1."""
+def pnl_from_weights(
+    b: pd.DataFrame,
+    sym: str,
+    w: pd.Series,
+    *,
+    cost_mult: float = 1.0,
+    commission_all_in: float | None = None,
+):
+    """Net P&L of target weights `w` decided at each bar's close; w[t] earns bar t+1.
+
+    `commission_all_in`, when given, replaces commission + exchange + NFA with one per-side
+    figure -- the CME University Trading Challenge charges $2.50/side all-in. The spread is
+    still charged: the challenge fills market orders at the best bid/offer.
+    """
     w = w.fillna(0.0)
     r = np.expm1(b["ret"])  # clean simple return
     held = w.shift(1).fillna(0.0)
     gross = held * r
-    c = CostModel.for_reference_broker(sym)
+    c = (
+        CostModel.for_reference_broker(sym)
+        if commission_all_in is None
+        else CostModel(
+            symbol=sym,
+            commission_per_side=commission_all_in,
+            exchange_fee_per_side=0.0,
+            nfa_fee_per_side=0.0,
+        )
+    )
     notional = b["close"].abs() * c.point_value
     per_side = c.round_turn_usd / 2 / notional * cost_mult  # fraction of notional per side
     trade_cost = (w - held).abs() * per_side.shift(1).fillna(per_side.iloc[0])

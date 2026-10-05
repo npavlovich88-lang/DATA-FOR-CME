@@ -71,13 +71,13 @@ def simulate(ev: np.ndarray, size: np.ndarray, hold: int) -> tuple[np.ndarray, n
     return w, lab
 
 
-def cell(markets: dict, events: dict, rule: str, hold: int) -> dict:
+def cell(markets: dict, events: dict, rule: str, hold: int, **pnl_kw) -> dict:
     daily, trades, active = {}, [], []
     for s, m in markets.items():
         ev = events[s][rule]
         w, lab = simulate(ev, m["size"], hold)
         b = m["bars"]
-        p = trend.pnl_from_weights(b, s, pd.Series(w, index=b.index))
+        p = trend.pnl_from_weights(b, s, pd.Series(w, index=b.index), **pnl_kw)
         net = (p["gross"] - p["cost"]).to_numpy()
         daily[s] = pd.Series(net, index=b.index).groupby(b["session"].to_numpy()).sum()
         active.append(pd.Series(w != 0, index=b.index))
