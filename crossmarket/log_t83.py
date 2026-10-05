@@ -14,7 +14,8 @@ def main() -> None:
     r = json.loads((OUT / "t83_results.json").read_text())
     best = max(r, key=lambda k: r[k]["sharpe"])
     b = r[best]
-    fam_min = min(v["family_p"] for v in r.values())
+    fam_min = min(v["family_p_minp"] for v in r.values())
+    best_p = min(r, key=lambda k: r[k]["family_p_minp"])
     neg = sum(v["sharpe"] < 0 for v in r.values())
 
     def line(k):
@@ -24,8 +25,9 @@ def main() -> None:
             f"{k}: SR {v['sharpe']:+.2f} [{lo:+.1f},{hi:+.1f}], {v['trades']} trades "
             f"({v['trades_per_day']:.1f}/day, {v['concurrent']:.1f} open), "
             f"{v['trade_mean_R']:+.3f}R/trade net, max DD {v['max_dd']:.1%}, halves "
-            f"{v['halves'][0]:+.2f}/{v['halves'][1]:+.2f}, null p {v['null_p']:.2f}, "
-            f"family p {v['family_p']:.2f}"
+            f"{v['halves'][0]:+.2f}/{v['halves'][1]:+.2f}, timing-null p "
+            f"{v['null_p_plus1']:.3f} (null median SR {v['null_median']:+.2f}), family p "
+            f"min-p {v['family_p_minp']:.2f} / max-SR {v['family_p']:.2f}"
         )
 
     cand = [k for k in r if CAND in k]
@@ -37,6 +39,12 @@ def main() -> None:
         + ", ".join(f"{k.split(' | ')[0]} {k.split(' | ')[1]} {k.split(' | ')[2]} "
                     f"{r[k]['sharpe']:+.2f}" for k in others if r[k]["sharpe"] > 0)
         + "."
+    )
+    ev.append(
+        "The timing null is not centred on zero: random entries lose to costs (null median SR "
+        f"{min(v['null_median'] for v in r.values()):+.2f} to "
+        f"{max(v['null_median'] for v in r.values()):+.2f}); breakout cells keep the month's "
+        "drift. Hence the Westfall-Young min-p family test, not best raw Sharpe."
     )
     ev.append(
         "Spreading across markets: average pairwise correlation of per-market daily P&L is "
@@ -54,15 +62,17 @@ def main() -> None:
     if fam_min < 0.05:
         state = Verdict.signal_only
         reason = (
-            f"{best} survives the best-of-{len(r)} timing null (family p {b['family_p']:.2f}) "
-            "on one year of train. A traded result on train, not yet confirmed anywhere."
+            f"{best_p} survives the best-of-{len(r)} timing null (Westfall-Young family p "
+            f"{r[best_p]['family_p_minp']:.2f}) on one year of train. A traded result on train, "
+            "picked from a rule T82 selected on the same data -- not confirmed anywhere."
         )
     else:
         state = Verdict.no_edge
         reason = (
-            f"No cell survives the best-of-{len(r)} random-timing null (smallest family p "
-            f"{fam_min:.2f}); the best, {best}, is SR {b['sharpe']:+.2f} with a 95% interval "
-            f"of {b['sharpe_ci'][0]:+.1f} to {b['sharpe_ci'][1]:+.1f}."
+            f"No cell survives the best-of-{len(r)} random-timing null (smallest Westfall-Young "
+            f"family p {fam_min:.2f}, {best_p}); the best Sharpe, {best}, is "
+            f"{b['sharpe']:+.2f} with a 95% interval of {b['sharpe_ci'][0]:+.1f} to "
+            f"{b['sharpe_ci'][1]:+.1f}."
         )
     v = state(
         "T83 W/M/Q anchored VWAP bands, 4 rules x 2 holds, 12-market portfolio, train",
@@ -82,8 +92,8 @@ def main() -> None:
         "Yahoo =F 1h, 12 markets, roll-cleaned, clean-index indicators",
         "intraday train, first 1/2/5 sessions after each W/M/Q reset unscored",
         "3 anchors x 4 rules x 2 holds (4h, 1 session) = 24 cells; one position per market",
-        f"best: {best} SR {b['sharpe']:+.2f}, family p {b['family_p']:.2f}",
-        "7,11,12,16,17,18,20,21 applied; costs and rolls in P&L; best-of-24 timing null",
+        f"best: {best} SR {b['sharpe']:+.2f}, family p min-p {b['family_p_minp']:.2f}",
+        "7,11,12,16,17,18,20,21 applied; costs and rolls in P&L; Westfall-Young timing null",
         v.state,
         v.reason,
         v.next_step,
