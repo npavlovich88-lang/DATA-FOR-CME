@@ -18,7 +18,8 @@ def main() -> None:
         ev.append(
             f"{tf} entry: net Sharpe {b['sharpe']:+.2f} [95% {lo:+.1f},{hi:+.1f}], gross "
             f"{v['gross_sharpe']:+.2f}, 3x cost {v['cost3x']['sharpe']:+.2f}, one session late "
-            f"{v['lag_session']['sharpe']:+.2f}; ann {b['ann_ret']:+.1%} at {b['ann_vol']:.1%} vol, "
+            f"{v['lag_session']['sharpe']:+.2f}; ann {b['ann_ret']:+.1%} "
+            f"at {b['ann_vol']:.1%} vol, "
             f"max DD {b['max_dd']:.1%}, t monthly {b['t_monthly']:+.2f} on {b['months']} months; "
             f"halves {v['halves'][0]:+.2f}/{v['halves'][1]:+.2f}; random-sign null p "
             f"{v['null_p']:.2f}"

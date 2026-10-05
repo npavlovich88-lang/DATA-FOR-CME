@@ -1,6 +1,6 @@
 """T80: trend following (Donchian breakout + EMA crossover) on clean 4h bars, TRAIN ONLY.
 
-    PYTHONPATH=<quant repo>/src:crossmarket python crossmarket/run_t80.py
+PYTHONPATH=<quant repo>/src:crossmarket python crossmarket/run_t80.py
 """
 
 from __future__ import annotations

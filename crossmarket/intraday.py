@@ -76,16 +76,22 @@ def roll_window_days(sym: str, start: pd.Timestamp, end: pd.Timestamp) -> set:
                 x = _third_weekday(y, m, 2)  # third Wednesday
                 add(x - pd.Timedelta(days=9), x + pd.Timedelta(days=3))
             elif sym in ("ZB", "ZN") and m in (2, 5, 8, 11):  # first notice ~ month end
-                add(pd.Timestamp(y, m, 20), pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0)
-                    + pd.Timedelta(days=7))
+                add(
+                    pd.Timestamp(y, m, 20),
+                    pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0) + pd.Timedelta(days=7),
+                )
             elif sym == "HG" and m in (2, 4, 6, 8, 11):
-                add(pd.Timestamp(y, m, 20), pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0)
-                    + pd.Timedelta(days=7))
+                add(
+                    pd.Timestamp(y, m, 20),
+                    pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0) + pd.Timedelta(days=7),
+                )
             elif sym == "CL":
                 add(pd.Timestamp(y, m, 14), pd.Timestamp(y, m, 25))
             elif sym == "NG":
-                add(pd.Timestamp(y, m, 19), pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0)
-                    + pd.Timedelta(days=2))
+                add(
+                    pd.Timestamp(y, m, 19),
+                    pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0) + pd.Timedelta(days=2),
+                )
     return days
 
 
@@ -130,15 +136,19 @@ def to_4h(d: pd.DataFrame) -> pd.DataFrame:
     hrs_into = (d.index.hour - SESSION_START_H) % 24
     key = pd.Series(d["session"].astype(str), index=d.index) + "_" + (hrs_into // 4).astype(str)
     g = d.groupby(key.to_numpy(), sort=False)
-    out = pd.DataFrame(
-        {
-            "ts": g.apply(lambda x: x.index[-1]),
-            "close": g["close"].last(),
-            "ret": g["ret"].sum(),  # clean log return: excluded hours contribute zero
-            "excluded": g["excluded"].any(),
-            "session": g["session"].first(),
-        }
-    ).set_index("ts").sort_index()
+    out = (
+        pd.DataFrame(
+            {
+                "ts": g.apply(lambda x: x.index[-1]),
+                "close": g["close"].last(),
+                "ret": g["ret"].sum(),  # clean log return: excluded hours contribute zero
+                "excluded": g["excluded"].any(),
+                "session": g["session"].first(),
+            }
+        )
+        .set_index("ts")
+        .sort_index()
+    )
     out["clean_idx"] = np.exp(out["ret"].cumsum())
     return out
 
@@ -171,7 +181,9 @@ def load_daily_clean(sym: str) -> pd.DataFrame:
     with np.errstate(invalid="ignore", divide="ignore"):
         gap = np.log(d["open"] / d["close"].shift()).where(pos)
         r = np.log(d["close"] / d["close"].shift()).where(pos)
-    win = pd.Series(d.index.date, index=d.index).isin(roll_window_days(sym, d.index[0], d.index[-1]))
+    win = pd.Series(d.index.date, index=d.index).isin(
+        roll_window_days(sym, d.index[0], d.index[-1])
+    )
     block = (win != win.shift()).cumsum()[win]
     roll_days = gap[win].abs().fillna(-1.0).groupby(block).idxmax()
     r.loc[roll_days] = r.loc[roll_days] - gap.loc[roll_days]

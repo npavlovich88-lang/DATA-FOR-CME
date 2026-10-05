@@ -13,8 +13,19 @@ from quant.verdict import Verdict
 
 OUT = pathlib.Path(__file__).parent / "out"
 LOG = OUT / "test_log.xlsx"
-COLS = ["test", "date", "title", "data", "window", "configs", "headline", "checks", "verdict",
-        "binding reason", "next"]
+COLS = [
+    "test",
+    "date",
+    "title",
+    "data",
+    "window",
+    "configs",
+    "headline",
+    "checks",
+    "verdict",
+    "binding reason",
+    "next",
+]
 
 
 def verdict_t80(r: dict) -> Verdict:

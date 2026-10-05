@@ -63,13 +63,19 @@ def main() -> None:
             per_market_ann_ret=(net.mean() * 252).round(4).to_dict(),
             window=(str(d.index[0].date()), str(d.index[-1].date())),
         )
-    t = pd.DataFrame({s: tsmom.monthly_targets(dailies[s], len(INTRADAY))["ret12"] for s in INTRADAY})
+    t = pd.DataFrame(
+        {s: tsmom.monthly_targets(dailies[s], len(INTRADAY))["ret12"] for s in INTRADAY}
+    )
     t = t.loc[pd.Period(SCORE_START, "M") :]
-    res["positions"] = {str(k): "".join("L" if v > 0 else "S" for v in row) for k, row in t.iterrows()}
+    res["positions"] = {
+        str(k): "".join("L" if v > 0 else "S" for v in row) for k, row in t.iterrows()
+    }
     res["markets"] = INTRADAY
     OUT.mkdir(exist_ok=True)
     (OUT / "t81_results.json").write_text(
-        json.dumps(res, indent=1, default=lambda x: float(x) if not isinstance(x, pd.Period) else str(x))
+        json.dumps(
+            res, indent=1, default=lambda x: float(x) if not isinstance(x, pd.Period) else str(x)
+        )
     )
 
 
