@@ -1,0 +1,29 @@
+From d7b69f5fc458eae587b884052915468bbd447e2f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 5 Oct 2026 18:48:05 +0000
+Subject: [PATCH] data_splits: record intraday holdout look T86 (2026-10-05)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PXmFtRfwPkTsDreNDGDS7F
+---
+ src/quant/data_splits.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/quant/data_splits.py b/src/quant/data_splits.py
+index 59a478b..ab5bea9 100644
+--- a/src/quant/data_splits.py
++++ b/src/quant/data_splits.py
+@@ -243,7 +243,9 @@ CM_INTRADAY_TRAIN_END = "2025-10-01"
+ CM_INTRADAY_VALIDATE_END = "2026-04-01"
+ CM_SPLITS_CONFIRMED = "2026-10-05"
+ 
+-CM_HOLDOUT_LOOKS: list[tuple[str, str]] = []  # (date, test id). Empty: neither holdout seen.
++CM_HOLDOUT_LOOKS: list[tuple[str, str]] = [
++    ("2026-10-05", "T86"),  # intraday holdout, Q-VWAP 1sd re-entry + TEMA9xEMA50: NOT CONFIRMED
++]  # (date, test id). The intraday holdout is SPENT for this rule family.
+ 
+ 
+ def cm_segment(ts, *, intraday: bool) -> str:
+-- 
+2.43.0
+
