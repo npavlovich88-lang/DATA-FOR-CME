@@ -1,0 +1,1 @@
+{"date": "2026-10-05", "test": "T84", "segment": "validate", "rule": "Q | reenter 1sd | recent TEMAxEMA cross | hold 1s", "look": 1}
