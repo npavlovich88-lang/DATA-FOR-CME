@@ -68,7 +68,13 @@ def main() -> None:
     ev_rows, per_bucket, per_age, per_market = {}, {}, {}, {}
     rng = np.random.default_rng(82)
     fin = sc[np.isfinite(sc[f"d_{PRIMARY}"])]
-    lookup = dict(zip(zip(fin["sym"], fin["session"].to_numpy(), fin["hour"]), fin[f"d_{PRIMARY}"]))
+    lookup = dict(
+        zip(
+            zip(fin["sym"], fin["session"].to_numpy(), fin["hour"], strict=True),
+            fin[f"d_{PRIMARY}"],
+            strict=True,
+        )
+    )
     month_sessions = {m: np.array(sorted(g.unique())) for m, g in fin.groupby("month")["session"]}
     evs: dict[str, list[pd.Series]] = {}
     for _, b in allb.groupby("sym", sort=False):
@@ -108,20 +114,21 @@ def main() -> None:
         # shared across markets, keeping market and hour -- events that bunch together in
         # calendar time stay bunched, so the control has the same clustering as the signal
         ctrl = np.empty(N_CTRL)
-        ev_m = ee["month"].to_numpy()
         ev_s = ee["session"].to_numpy()
-        ev_key = list(zip(ee["sym"], ee["hour"]))
+        ev_key = list(zip(ee["sym"], ee["hour"], strict=True))
         dirs_arr = ee["dir"].to_numpy()
         for i in range(N_CTRL):
             perm = {}
-            for m, ss in month_sessions.items():
-                perm.update(zip(ss, rng.permutation(ss)))
+            for ss in month_sessions.values():
+                perm.update(zip(ss, rng.permutation(ss), strict=True))
             vals = np.array(
-                [lookup.get((k[0], perm[s_], k[1]), np.nan) for k, s_ in zip(ev_key, ev_s)]
+                [
+                    lookup.get((k[0], perm[s_], k[1]), np.nan)
+                    for k, s_ in zip(ev_key, ev_s, strict=True)
+                ]
             )
             ok = np.isfinite(vals)
             ctrl[i] = np.mean(vals[ok] * dirs_arr[ok]) if ok.any() else np.nan
-        del ev_m
         r["ctrl_p"] = float((ctrl[np.isfinite(ctrl)] >= x.mean()).mean())
         r["p_primary"] = float(2 * norm.sf(abs(r[f"t_{PRIMARY}"])))
         ev_rows[name] = r
