@@ -22,7 +22,8 @@ def train_bars(strict: bool = False) -> dict:
     bars = {}
     for s in INTRADAY:
         b = load_4h(s, strict=strict)
-        bars[s] = b[b.index < pd.Timestamp(TRAIN_END, tz=b.index.tz)]  # nothing past train
+        # cut by SESSION: the evening of 2025-09-30 opens the 2025-10-01 (validate) session
+        bars[s] = b[pd.to_datetime(b["session"]) < pd.Timestamp(TRAIN_END)]
     return bars
 
 

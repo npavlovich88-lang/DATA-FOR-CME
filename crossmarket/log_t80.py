@@ -18,6 +18,9 @@ COLS = ["test", "date", "title", "data", "window", "configs", "headline", "check
 
 
 def verdict_t80(r: dict) -> Verdict:
+    days = next(iter(r.values()))["base"]["days"]
+    fam = [v["perm_p_family"] for v in r.values()]
+    pf = f"{min(fam):.2f}-{max(fam):.2f}"
     rows = []
     for k, v in r.items():
         b = v["base"]
@@ -30,9 +33,9 @@ def verdict_t80(r: dict) -> Verdict:
         )
     return Verdict.inconclusive(
         "T80 4h trend following (breakout + EMA), 12 markets, train",
-        reason="174 scored days cannot resolve a trend Sharpe: every 95% interval spans roughly "
-        "-2 to +2.4, so the published 0.3-0.8 and zero are equally consistent with the data. "
-        "No config survives the best-of-4 permutation null (family p 0.23-0.56).",
+        reason=f"{days} scored days cannot resolve a trend Sharpe: every 95% interval spans "
+        "roughly -2 to +2.4, so the published 0.3-0.8 and zero are equally consistent with the "
+        f"data. No config survives the best-of-4 permutation null (family p {pf}).",
         evidence=rows
         + [
             "Positive configs are carried by ES/NQ/RTY/YM, one correlated long-equity bet over "
@@ -48,29 +51,13 @@ def verdict_t80(r: dict) -> Verdict:
     )
 
 
-def main() -> None:
-    r = json.loads((OUT / "t80_results.json").read_text())
-    v = verdict_t80(r)
-    block = v.render()
-    best = max(r, key=lambda k: r[k]["base"]["sharpe"])
-    row = [
-        "T80",
-        "2026-10-05",
-        "4h trend following: Donchian breakout + EMA crossover, inverse-vol, equal risk",
-        "Yahoo =F 1h -> session 4h, 12 markets (SB excluded: contract-mixed), roll-cleaned",
-        f"train only, scored {r[best]['window'][0]}..{r[best]['window'][1]} (174 days)",
-        ", ".join(r),
-        "; ".join(f"{k} SR {r[k]['base']['sharpe']:+.2f}" for k in r),
-        "1,3,7,9,12,16,17,20,21,22 applied; costs 1x/3x; lag 2; strict cleaning",
-        v.state,
-        v.reason,
-        v.next_step,
-    ]
+def append(test: str, row: list, block: str) -> None:
+    """Add one row to the log and the verdict block on its own sheet. Refuses duplicates."""
     if LOG.exists():
         wb = load_workbook(LOG)
         ws = wb["log"]
-        if any(c.value == "T80" for c in ws["A"]):
-            raise SystemExit("T80 already logged")
+        if any(c.value == test for c in ws["A"]):
+            raise SystemExit(f"{test} already logged")
     else:
         wb = Workbook()
         ws = wb.active
@@ -81,13 +68,35 @@ def main() -> None:
     ws.append(row)
     for c in ws[ws.max_row]:
         c.alignment = Alignment(wrap_text=True, vertical="top")
-    vs = wb.create_sheet("T80 verdict")
+    vs = wb.create_sheet(f"{test} verdict")
     for line in block.splitlines():
         vs.append([line])
     vs.column_dimensions["A"].width = 100
     for c in vs["A"]:
         c.font = Font(name="Consolas")
     wb.save(LOG)
+
+
+def main() -> None:
+    r = json.loads((OUT / "t80_results.json").read_text())
+    v = verdict_t80(r)
+    block = v.render()
+    best = max(r, key=lambda k: r[k]["base"]["sharpe"])
+    row = [
+        "T80",
+        "2026-10-05",
+        "4h trend following: Donchian breakout + EMA crossover, inverse-vol, equal risk",
+        "Yahoo =F 1h -> session 4h, 12 markets (SB excluded: contract-mixed), roll-cleaned",
+        f"train only, scored {r[best]['window'][0]}..{r[best]['window'][1]} "
+        f"({r[best]['base']['days']} days)",
+        ", ".join(r),
+        "; ".join(f"{k} SR {r[k]['base']['sharpe']:+.2f}" for k in r),
+        "1,3,7,9,12,16,17,20,21,22 applied; costs 1x/3x; lag 2; strict cleaning",
+        v.state,
+        v.reason,
+        v.next_step,
+    ]
+    append("T80", row, block)
     print(block)
 
 

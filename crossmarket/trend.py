@@ -86,10 +86,16 @@ def market_pnl(
     b: pd.DataFrame, sym: str, cfg: dict, n_markets: int, *, cost_mult: float = 1.0, lag: int = 1
 ) -> pd.DataFrame:
     """Per-bar net return contribution of one market, as a fraction of capital."""
-    r = np.expm1(b["ret"])  # clean simple return
     vol = np.sqrt((b["ret"] ** 2).ewm(span=VOL_SPAN, min_periods=VOL_SPAN).mean() * ANN)
     w = signal(b["clean_idx"], cfg) * (TARGET_VOL / np.sqrt(n_markets)) / vol
     w = w.replace([np.inf, -np.inf], 0.0).fillna(0.0).shift(lag - 1)  # w[t] earns r[t+1]
+    return pnl_from_weights(b, sym, w, cost_mult=cost_mult)
+
+
+def pnl_from_weights(b: pd.DataFrame, sym: str, w: pd.Series, *, cost_mult: float = 1.0):
+    """Net P&L of target weights `w` decided at each bar's close; w[t] earns bar t+1."""
+    w = w.fillna(0.0)
+    r = np.expm1(b["ret"])  # clean simple return
     held = w.shift(1).fillna(0.0)
     gross = held * r
     c = CostModel.for_reference_broker(sym)

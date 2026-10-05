@@ -37,15 +37,17 @@ import pathlib
 import numpy as np
 import pandas as pd
 
+from quant.data_splits import CM_INTRADAY_TRAIN_END, CM_INTRADAY_VALIDATE_END
+
 DATA = pathlib.Path(os.environ.get("CROSSMARKET_DATA", pathlib.Path(__file__).parent / "data"))
 INTRADAY = ["ES", "NQ", "RTY", "YM", "ZB", "ZN", "CL", "NG", "HG", "6E", "6B", "6J"]  # no SB
 TZ = "America/New_York"
 SESSION_START_H = 18  # CME Globex day opens 18:00 ET; a bar belongs to the session it opens in
 
-# Proposed intraday split -- same dates for every market. NOT YET CONFIRMED, and so not written
-# into quant.data_splits. Only TRAIN is used by anything in this directory.
-TRAIN_END = "2025-10-01"
-VALIDATE_END = "2026-04-01"
+# The confirmed cross-market intraday split (quant.data_splits, patch 0002). Only TRAIN is
+# used by anything in this directory.
+TRAIN_END = CM_INTRADAY_TRAIN_END
+VALIDATE_END = CM_INTRADAY_VALIDATE_END
 
 
 def _third_weekday(year: int, month: int, weekday: int) -> pd.Timestamp:
@@ -143,3 +145,36 @@ def to_4h(d: pd.DataFrame) -> pd.DataFrame:
 
 def load_4h(sym: str, *, strict: bool = False) -> pd.DataFrame:
     return to_4h(flag_1h(load_1h(sym), sym, strict=strict))
+
+
+def load_1h_clean(sym: str, *, strict: bool = False) -> pd.DataFrame:
+    """Clean 1h bars in the same layout as `to_4h`: close, ret, excluded, session, clean_idx."""
+    d = flag_1h(load_1h(sym), sym, strict=strict)
+    out = d[["close", "ret", "excluded", "session"]].copy()
+    out["clean_idx"] = np.exp(out["ret"].cumsum())
+    return out
+
+
+def load_daily_clean(sym: str) -> pd.DataFrame:
+    """Daily bars with roll gaps removed: in each scheduled roll window, the day with the largest
+    open-vs-previous-close gap is taken as the roll and its gap is subtracted from the return.
+
+    Yahoo's daily `=F` series does not mix contracts the way the hourly one does -- a roll is a
+    single clean gap at the open (ES 2024-12-23 +2.7%, NG 2025-09-29 +10.5%) -- so one roll per
+    window is the right model. Where a month's roll is tiny, this removes one small real gap,
+    which is symmetric noise, not bias.
+    """
+    d = pd.read_csv(DATA / f"{sym}_1d.csv", index_col=0)
+    d.index = pd.to_datetime(d.index, utc=True).tz_convert(TZ).tz_localize(None).normalize()
+    d = d[~d.index.duplicated(keep="last")].sort_index()
+    pos = (d[["open", "close"]] > 0).all(axis=1) & (d["close"].shift() > 0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        gap = np.log(d["open"] / d["close"].shift()).where(pos)
+        r = np.log(d["close"] / d["close"].shift()).where(pos)
+    win = pd.Series(d.index.date, index=d.index).isin(roll_window_days(sym, d.index[0], d.index[-1]))
+    block = (win != win.shift()).cumsum()[win]
+    roll_days = gap[win].abs().fillna(-1.0).groupby(block).idxmax()
+    r.loc[roll_days] = r.loc[roll_days] - gap.loc[roll_days]
+    out = pd.DataFrame({"close": d["close"], "ret": r.fillna(0.0), "roll": d.index.isin(roll_days)})
+    out["clean_idx"] = np.exp(out["ret"].cumsum())
+    return out

@@ -1,0 +1,107 @@
+From 6aab940e68b8b0ff5b0b2310324ae64f9dd0e090 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 5 Oct 2026 16:34:41 +0000
+Subject: [PATCH] data_splits: cross-market daily and intraday splits,
+ confirmed 2026-10-05
+
+Daily: train < 2015-01-01, validate < 2021-01-01, holdout after.
+Intraday (Yahoo 1h/4h): train < 2025-10-01, validate < 2026-04-01,
+holdout after. Same dates for all 13 markets; MES/MNQ untouched.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PXmFtRfwPkTsDreNDGDS7F
+---
+ src/quant/data_splits.py  | 46 +++++++++++++++++++++++++++++++++++++++
+ tests/test_data_splits.py | 25 +++++++++++++++++++++
+ 2 files changed, 71 insertions(+)
+
+diff --git a/src/quant/data_splits.py b/src/quant/data_splits.py
+index a2e2f34..59a478b 100644
+--- a/src/quant/data_splits.py
++++ b/src/quant/data_splits.py
+@@ -214,3 +214,49 @@ def make_wf_plan(
+         step=step_months * per_month,
+         anchored=anchored,
+     )
++
++
++# ============================================================================ cross-market
++# THE CROSS-MARKET SPLITS. Confirmed by the user 2026-10-05, before any validate or holdout
++# evaluation. Same dates for every one of the 13 Yahoo `=F` markets, so cross-sectional
++# agreement means something (standing check 21). The MES/MNQ boundaries above are untouched.
++#
++# DAILY (26 years):
++#     train      first bar   -> 2014-12-31     contains 2008
++#     validate   2015-01-01  -> 2020-12-31     contains 2015-16, 2018, 2020
++#     holdout    2021-01-01  -> last bar       LOCKED -- contains 2022, the strongest trend
++#                                              year in decades; read it per year
++#
++# INTRADAY (Yahoo 1h, ~730 days back from the pull; 4h is built from 1h):
++#     train      first bar   -> 2025-09-30     ~12 months
++#     validate   2025-10-01  -> 2026-03-31
++#     holdout    2026-04-01  -> last bar       LOCKED
++#
++# A strategy whose SIGNAL reads daily history (e.g. a 12-month lookback) while it TRADES on
++# intraday bars is scored on the intraday split; the lookback may read daily bars from before
++# the intraday train start, because those are strictly in the past of every scored bar.
++#
++# Boundaries are EXCLUSIVE ends: train is `< CM_*_TRAIN_END`, validate `< CM_*_VALIDATE_END`.
++CM_DAILY_TRAIN_END = "2015-01-01"
++CM_DAILY_VALIDATE_END = "2021-01-01"
++CM_INTRADAY_TRAIN_END = "2025-10-01"
++CM_INTRADAY_VALIDATE_END = "2026-04-01"
++CM_SPLITS_CONFIRMED = "2026-10-05"
++
++CM_HOLDOUT_LOOKS: list[tuple[str, str]] = []  # (date, test id). Empty: neither holdout seen.
++
++
++def cm_segment(ts, *, intraday: bool) -> str:
++    """'train' / 'validate' / 'holdout' for a timestamp or date on the cross-market split."""
++    import pandas as pd
++
++    t = pd.Timestamp(ts)
++    t = t.tz_localize(None) if t.tzinfo is not None else t
++    tr, va = (
++        (CM_INTRADAY_TRAIN_END, CM_INTRADAY_VALIDATE_END)
++        if intraday
++        else (CM_DAILY_TRAIN_END, CM_DAILY_VALIDATE_END)
++    )
++    if t < pd.Timestamp(tr):
++        return "train"
++    return "validate" if t < pd.Timestamp(va) else "holdout"
+diff --git a/tests/test_data_splits.py b/tests/test_data_splits.py
+index d704188..87c1b29 100644
+--- a/tests/test_data_splits.py
++++ b/tests/test_data_splits.py
+@@ -185,3 +185,28 @@ def test_bars_per_month_is_measured_not_assumed():
+     )
+     n = bars_per_month(dates)
+     assert 3800 < n < 4600, f"expected ~4300 full-session 10m bars/month, measured {n}"
++
++
++def test_cross_market_splits_are_ordered_and_confirmed():
++    import pandas as pd
++
++    from quant.data_splits import (
++        CM_DAILY_TRAIN_END,
++        CM_DAILY_VALIDATE_END,
++        CM_INTRADAY_TRAIN_END,
++        CM_INTRADAY_VALIDATE_END,
++        CM_SPLITS_CONFIRMED,
++        cm_segment,
++    )
++
++    assert pd.Timestamp(CM_DAILY_TRAIN_END) < pd.Timestamp(CM_DAILY_VALIDATE_END)
++    assert pd.Timestamp(CM_INTRADAY_TRAIN_END) < pd.Timestamp(CM_INTRADAY_VALIDATE_END)
++    assert CM_SPLITS_CONFIRMED
++    assert cm_segment("2014-12-31", intraday=False) == "train"
++    assert cm_segment("2015-01-01", intraday=False) == "validate"
++    assert cm_segment("2021-01-01", intraday=False) == "holdout"
++    assert (
++        cm_segment(pd.Timestamp("2025-09-30 23:00", tz="America/New_York"), intraday=True)
++        == "train"
++    )
++    assert cm_segment("2026-04-01", intraday=True) == "holdout"
+-- 
+2.43.0
+
