@@ -1,2 +1,3 @@
 {"date": "2026-10-05", "test": "T84", "segment": "validate", "rule": "Q | reenter 1sd | recent TEMAxEMA cross | hold 1s", "look": 1}
 {"date": "2026-10-05", "test": "T85", "segment": "validate", "rule": "M | 1.5sd | EMA20/EMA50 within 12 | hold 12", "look": 2}
+{"date": "2026-10-05", "test": "T86", "segment": "holdout", "rule": "Q | reenter 1sd | recent TEMAxEMA cross | hold 1s", "look": 1}

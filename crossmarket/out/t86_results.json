@@ -1,0 +1,146 @@
+{
+ "prereg": {
+  "test": "T86",
+  "registered": "2026-10-05",
+  "segment": "HOLDOUT (2026-04-01 .. last bar of the 2026-10-05 pull), look 1 of 1, ever",
+  "selected_from": "identical to T84 (preregistered/T84.json); no parameter changed after T84 or T85",
+  "rule": {
+   "markets": [
+    "ES",
+    "NQ",
+    "RTY",
+    "YM",
+    "ZB",
+    "ZN",
+    "CL",
+    "NG",
+    "HG",
+    "6E",
+    "6B",
+    "6J"
+   ],
+   "bars": "Yahoo =F 1h, roll-cleaned (intraday.flag_1h), indicators in clean-index space",
+   "vwap_anchor": "quarterly, reset at the first session of each calendar quarter; first 5 sessions unscored",
+   "bands": "volume-weighted sd of typical price around the anchored VWAP",
+   "entry_buy": "close crosses back above VWAP - 1 sd (z[t-1] <= -1, z[t] > -1) AND TEMA(9) crossed above EMA(50) within the last 6 bars",
+   "entry_sell": "close crosses back below VWAP + 1 sd (z[t-1] >= 1, z[t] < 1) AND TEMA(9) crossed below EMA(50) within the last 6 bars",
+   "execution": "at the signal bar's close",
+   "exit": "fixed: close of the 23rd bar after entry (one Globex session); no stop, no target",
+   "positions": "one per market, signals while open ignored, no pyramiding",
+   "sizing": "one-session 1-sigma move = 0.25% of capital, trailing hourly vol (EWMA span 460) at entry",
+   "costs": [
+    "quant.costs reference (IBKR $0.85/side + exchange + NFA + spread)",
+    "challenge: $2.50/side all-in + spread"
+   ]
+  },
+  "success_criterion": "CONFIRMED only if, at reference costs, portfolio Sharpe > 0 AND mean net per trade > 0 AND random-timing null p < 0.05 (200 draws, session permutation within month shared across markets). Anything else: NOT CONFIRMED.",
+  "parameters_frozen": true,
+  "note": "Holdout P&L is reported whatever it shows. After this look the holdout is spent."
+ },
+ "reference": {
+  "days": 133,
+  "ann_ret": -0.015215177345568,
+  "ann_vol": 0.06074980101296963,
+  "sharpe": -0.25045641453738543,
+  "sharpe_ci": [
+   -2.5771651597842693,
+   1.3886929613638785
+  ],
+  "max_dd": -0.028140185200442147,
+  "months": 7,
+  "t_monthly": -0.32548060637895965,
+  "t_daily": -0.18195236678833243,
+  "sharpe_ex_top3": -2.302195931607348,
+  "trades": 117,
+  "trades_per_day": 0.8796992481203008,
+  "concurrent": 0.23467341065666697,
+  "trade_mean_R": -0.027453786283550996,
+  "trade_t": -0.2458437315412694,
+  "win_rate": 0.5299145299145299,
+  "halves": [
+   -1.3609379118690328,
+   0.5359685410417369
+  ],
+  "per_market_R": {
+   "6B": -1.852,
+   "6E": -1.189,
+   "6J": 8.183,
+   "CL": -0.957,
+   "ES": -3.158,
+   "HG": 1.749,
+   "NG": -2.687,
+   "NQ": -3.294,
+   "RTY": -0.638,
+   "YM": 2.462,
+   "ZB": -2.684,
+   "ZN": 0.852
+  },
+  "mean_market_sharpe": -0.4209050129950566,
+  "avg_pair_corr": 0.04182621658488441
+ },
+ "challenge": {
+  "days": 133,
+  "ann_ret": -0.015591491319320321,
+  "ann_vol": 0.06074163262726955,
+  "sharpe": -0.2566854173149212,
+  "sharpe_ci": [
+   -2.5847386356004747,
+   1.3837991527757227
+  ],
+  "max_dd": -0.028260491325017734,
+  "months": 7,
+  "t_monthly": -0.33299664131647666,
+  "t_daily": -0.18647763239271786,
+  "sharpe_ex_top3": -2.310573878747085,
+  "trades": 117,
+  "trades_per_day": 0.8796992481203008,
+  "concurrent": 0.23467341065666697,
+  "trade_mean_R": -0.02813279535299964,
+  "trade_t": -0.25202539454662903,
+  "win_rate": 0.5299145299145299,
+  "halves": [
+   -1.3679135458818161,
+   0.5301033439794604
+  ],
+  "per_market_R": {
+   "6B": -1.855,
+   "6E": -1.192,
+   "6J": 8.18,
+   "CL": -0.957,
+   "ES": -3.16,
+   "HG": 1.749,
+   "NG": -2.688,
+   "NQ": -3.294,
+   "RTY": -0.643,
+   "YM": 2.46,
+   "ZB": -2.713,
+   "ZN": 0.821
+  },
+  "mean_market_sharpe": -0.42373511685924464,
+  "avg_pair_corr": 0.041795879025952457
+ },
+ "null_p": 0.22885572139303484,
+ "null_median": -1.2839125525750879,
+ "confirmed": false,
+ "monthly": {
+  "2026-04": -0.0186662789697839,
+  "2026-05": -0.006230730044556321,
+  "2026-06": 0.00783381220923629,
+  "2026-07": 0.006001891667609005,
+  "2026-08": 0.009975504746307706,
+  "2026-09": -0.001883436268467431,
+  "2026-10": -0.005710417235814114
+ },
+ "window": [
+  "2026-04-01",
+  "2026-10-05"
+ ],
+ "trades_by_month": {
+  "2026-04": 27,
+  "2026-05": 15,
+  "2026-06": 15,
+  "2026-07": 32,
+  "2026-08": 12,
+  "2026-09": 16
+ }
+}
