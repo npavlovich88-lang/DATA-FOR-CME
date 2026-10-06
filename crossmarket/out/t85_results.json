@@ -1,0 +1,370 @@
+{
+ "cells": 624,
+ "train_days": 253,
+ "noise_bar_sharpe": 3.5807013388022693,
+ "pbo": 0.5334887334887335,
+ "pbo_detail": {
+  "pbo": 0.5334887334887335,
+  "reject_at_005": 1.0,
+  "n_combinations": 12870.0,
+  "S": 16.0,
+  "N_trials": 624.0,
+  "T": 253.0,
+  "lambda_median": -0.12700104293939918,
+  "degradation_slope": -0.7658462762587228,
+  "degradation_intercept": 0.12121292733773328,
+  "prob_oos_loss": 0.6056721056721057,
+  "oos_metric_median": NaN,
+  "is_metric_median": 0.20220668096455988,
+  "first_order_dominance": 0.0,
+  "sd2_integral": -0.019088058476704643,
+  "winner_counts": null,
+  "lambdas": null,
+  "is_metric": null,
+  "oos_metric": null
+ },
+ "top20": {
+  "M | 1.5sd | EMA20/EMA50 within 12 | hold 12": {
+   "sharpe": 2.4756,
+   "ann_ret": 0.0253,
+   "max_dd": -0.0052,
+   "trades": 28.0,
+   "trade_mean_R": 0.3629
+  },
+  "M | 1.5sd | EMA20/EMA50 within 3 | hold 12": {
+   "sharpe": 2.1649,
+   "ann_ret": 0.0111,
+   "max_dd": -0.0,
+   "trades": 6.0,
+   "trade_mean_R": 0.7416
+  },
+  "M | 1.5sd | EMA20/EMA50 within 6 | hold 12": {
+   "sharpe": 2.0422,
+   "ann_ret": 0.0135,
+   "max_dd": -0.0038,
+   "trades": 14.0,
+   "trade_mean_R": 0.3882
+  },
+  "M | 1.5sd | TEMA20/EMA100 within 6 | hold 46": {
+   "sharpe": 1.9823,
+   "ann_ret": 0.0261,
+   "max_dd": -0.0032,
+   "trades": 13.0,
+   "trade_mean_R": 0.8077
+  },
+  "W | 0.5sd | EMA20/EMA50 within 12 | hold 46": {
+   "sharpe": 1.9597,
+   "ann_ret": 0.0901,
+   "max_dd": -0.0172,
+   "trades": 105.0,
+   "trade_mean_R": 0.3445
+  },
+  "M | 2.0sd | TEMA9/EMA50 within 6 | hold 23": {
+   "sharpe": 1.8505,
+   "ann_ret": 0.0259,
+   "max_dd": -0.0061,
+   "trades": 19.0,
+   "trade_mean_R": 0.5471
+  },
+  "Q | 1.0sd | TEMA9/EMA50 within 6 | hold 23": {
+   "sharpe": 1.8009,
+   "ann_ret": 0.0805,
+   "max_dd": -0.0315,
+   "trades": 173.0,
+   "trade_mean_R": 0.1869
+  },
+  "M | 1.5sd | TEMA20/EMA100 within 6 | hold 23": {
+   "sharpe": 1.7796,
+   "ann_ret": 0.0149,
+   "max_dd": -0.0039,
+   "trades": 13.0,
+   "trade_mean_R": 0.4596
+  },
+  "M | 1.0sd | EMA20/EMA50 within 3 | hold 12": {
+   "sharpe": 1.776,
+   "ann_ret": 0.014,
+   "max_dd": -0.0028,
+   "trades": 38.0,
+   "trade_mean_R": 0.1481
+  },
+  "W | 0.5sd | EMA20/EMA50 within 6 | hold 23": {
+   "sharpe": 1.7045,
+   "ann_ret": 0.0276,
+   "max_dd": -0.0078,
+   "trades": 57.0,
+   "trade_mean_R": 0.1942
+  },
+  "M | 2.0sd | TEMA9/EMA50 within 3 | hold 23": {
+   "sharpe": 1.6969,
+   "ann_ret": 0.0188,
+   "max_dd": -0.0023,
+   "trades": 8.0,
+   "trade_mean_R": 0.9457
+  },
+  "Q | 1.0sd | TEMA9/EMA50 within 6 | hold 12": {
+   "sharpe": 1.6874,
+   "ann_ret": 0.0597,
+   "max_dd": -0.0127,
+   "trades": 186.0,
+   "trade_mean_R": 0.1289
+  },
+  "Q | 1.5sd | TEMA9/EMA50 within 6 | hold 23": {
+   "sharpe": 1.6483,
+   "ann_ret": 0.0681,
+   "max_dd": -0.0209,
+   "trades": 106.0,
+   "trade_mean_R": 0.2581
+  },
+  "M | 1.5sd | EMA20/EMA50 within 3 | hold 46": {
+   "sharpe": 1.6405,
+   "ann_ret": 0.0093,
+   "max_dd": -0.0021,
+   "trades": 6.0,
+   "trade_mean_R": 0.6208
+  },
+  "Q | 1.5sd | TEMA9/EMA50 within 6 | hold 12": {
+   "sharpe": 1.5474,
+   "ann_ret": 0.0434,
+   "max_dd": -0.0159,
+   "trades": 117.0,
+   "trade_mean_R": 0.1491
+  },
+  "M | 1.5sd | TEMA20/EMA100 within 12 | hold 46": {
+   "sharpe": 1.5352,
+   "ann_ret": 0.0327,
+   "max_dd": -0.0106,
+   "trades": 29.0,
+   "trade_mean_R": 0.4528
+  },
+  "Q | 2.0sd | TEMA20/EMA100 within 6 | hold 46": {
+   "sharpe": 1.5239,
+   "ann_ret": 0.0141,
+   "max_dd": -0.0017,
+   "trades": 4.0,
+   "trade_mean_R": 1.4134
+  },
+  "M | 1.0sd | EMA9/EMA21 within 6 | hold 12": {
+   "sharpe": 1.5225,
+   "ann_ret": 0.0535,
+   "max_dd": -0.0221,
+   "trades": 259.0,
+   "trade_mean_R": 0.0829
+  },
+  "Q | 1.0sd | TEMA9/EMA50 within 3 | hold 23": {
+   "sharpe": 1.5064,
+   "ann_ret": 0.0639,
+   "max_dd": -0.0293,
+   "trades": 137.0,
+   "trade_mean_R": 0.1873
+  },
+  "Q | 1.5sd | TEMA9/EMA50 within 12 | hold 23": {
+   "sharpe": 1.4974,
+   "ann_ret": 0.0669,
+   "max_dd": -0.0202,
+   "trades": 141.0,
+   "trade_mean_R": 0.1905
+  }
+ },
+ "share_positive": 0.4967948717948718,
+ "by_anchor": {
+  "M": {
+   "mean": 0.111,
+   "median": 0.188,
+   "max": 2.476,
+   "size": 208
+  },
+  "Q": {
+   "mean": -0.247,
+   "median": -0.2,
+   "max": 1.801,
+   "size": 208
+  },
+  "W": {
+   "mean": -0.078,
+   "median": -0.036,
+   "max": 1.96,
+   "size": 208
+  }
+ },
+ "by_k": {
+  "0.5sd": {
+   "mean": -0.297,
+   "median": -0.296,
+   "max": 1.96,
+   "size": 156
+  },
+  "1.0sd": {
+   "mean": -0.042,
+   "median": 0.101,
+   "max": 1.801,
+   "size": 156
+  },
+  "1.5sd": {
+   "mean": 0.19,
+   "median": 0.264,
+   "max": 2.476,
+   "size": 156
+  },
+  "2.0sd": {
+   "mean": -0.136,
+   "median": -0.126,
+   "max": 1.851,
+   "size": 156
+  }
+ },
+ "by_conf": {
+  "EMA20/EMA50 within 12": {
+   "mean": 0.072,
+   "median": 0.182,
+   "max": 2.476,
+   "size": 48
+  },
+  "EMA20/EMA50 within 3": {
+   "mean": 0.333,
+   "median": 0.433,
+   "max": 2.165,
+   "size": 48
+  },
+  "EMA20/EMA50 within 6": {
+   "mean": 0.081,
+   "median": 0.124,
+   "max": 2.042,
+   "size": 48
+  },
+  "EMA9/EMA21 within 12": {
+   "mean": -0.013,
+   "median": -0.001,
+   "max": 1.184,
+   "size": 48
+  },
+  "EMA9/EMA21 within 3": {
+   "mean": 0.231,
+   "median": 0.357,
+   "max": 1.457,
+   "size": 48
+  },
+  "EMA9/EMA21 within 6": {
+   "mean": -0.138,
+   "median": -0.068,
+   "max": 1.523,
+   "size": 48
+  },
+  "TEMA20/EMA100 within 12": {
+   "mean": -0.185,
+   "median": 0.048,
+   "max": 1.535,
+   "size": 48
+  },
+  "TEMA20/EMA100 within 3": {
+   "mean": -0.213,
+   "median": -0.175,
+   "max": 1.343,
+   "size": 48
+  },
+  "TEMA20/EMA100 within 6": {
+   "mean": -0.186,
+   "median": -0.241,
+   "max": 1.982,
+   "size": 48
+  },
+  "TEMA9/EMA50 within 12": {
+   "mean": -0.042,
+   "median": -0.069,
+   "max": 1.497,
+   "size": 48
+  },
+  "TEMA9/EMA50 within 3": {
+   "mean": -0.007,
+   "median": 0.007,
+   "max": 1.697,
+   "size": 48
+  },
+  "TEMA9/EMA50 within 6": {
+   "mean": 0.061,
+   "median": 0.027,
+   "max": 1.851,
+   "size": 48
+  },
+  "no cross": {
+   "mean": -0.92,
+   "median": -0.785,
+   "max": 0.596,
+   "size": 48
+  }
+ },
+ "by_hold": {
+  "hold 12": {
+   "mean": 0.001,
+   "median": -0.021,
+   "max": 2.476,
+   "size": 156
+  },
+  "hold 23": {
+   "mean": 0.026,
+   "median": 0.062,
+   "max": 1.851,
+   "size": 156
+  },
+  "hold 4": {
+   "mean": -0.445,
+   "median": -0.509,
+   "max": 1.402,
+   "size": 156
+  },
+  "hold 46": {
+   "mean": 0.133,
+   "median": 0.217,
+   "max": 1.982,
+   "size": 156
+  }
+ },
+ "prereg_cell_train": {
+  "sharpe": 1.8008724925719175,
+  "ann_ret": 0.08052793638205019,
+  "max_dd": -0.0314548234795643,
+  "trades": 173.0,
+  "trade_mean_R": 0.18693061661307178
+ },
+ "prereg_cell_rank": 7,
+ "winner": "M | 1.5sd | EMA20/EMA50 within 12 | hold 12",
+ "winner_validate": {
+  "days": 128,
+  "ann_ret": -0.016690274840731767,
+  "ann_vol": 0.012007397332125438,
+  "sharpe": -1.389999379472305,
+  "sharpe_ci": [
+   -3.4820345533317028,
+   1.0422066931896248
+  ],
+  "max_dd": -0.013527093166218584,
+  "months": 6,
+  "t_monthly": -0.7376807719761046,
+  "t_daily": -0.9906478944407132,
+  "sharpe_ex_top3": -2.9333010848393246,
+  "trades": 24,
+  "trades_per_day": 0.1875,
+  "concurrent": 0.033050047214353166,
+  "trade_mean_R": -0.14129333198503083,
+  "trade_t": -0.9079905954109209,
+  "win_rate": 0.4583333333333333,
+  "halves": [
+   -4.009834734689799,
+   1.219913426037555
+  ],
+  "per_market_R": {
+   "6B": -0.688,
+   "6E": -0.469,
+   "6J": 0.868,
+   "CL": -1.137,
+   "ES": -0.622,
+   "HG": -0.637,
+   "NG": -0.399,
+   "NQ": -1.179,
+   "YM": -0.229,
+   "ZB": -0.138,
+   "ZN": 1.239
+  },
+  "mean_market_sharpe": -0.5941720970351225,
+  "avg_pair_corr": 0.07049114105032867
+ }
+}

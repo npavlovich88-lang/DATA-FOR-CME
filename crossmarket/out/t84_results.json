@@ -1,0 +1,140 @@
+{
+ "prereg": {
+  "test": "T84",
+  "registered": "2026-10-05",
+  "segment": "VALIDATE (2025-10-01 .. 2026-03-31), first look at this rule",
+  "selected_from": "T83 cell 'Q | reenter 1sd | recent TEMAxEMA cross | hold 1s', chosen from the W/Q cells only (M was in-sample to T82) before any validate data was read",
+  "rule": {
+   "markets": [
+    "ES",
+    "NQ",
+    "RTY",
+    "YM",
+    "ZB",
+    "ZN",
+    "CL",
+    "NG",
+    "HG",
+    "6E",
+    "6B",
+    "6J"
+   ],
+   "bars": "Yahoo =F 1h, roll-cleaned (intraday.flag_1h), indicators in clean-index space",
+   "vwap_anchor": "quarterly, reset at the first session of each calendar quarter; first 5 sessions unscored",
+   "bands": "volume-weighted sd of typical price around the anchored VWAP",
+   "entry_buy": "close crosses back above VWAP - 1 sd (z[t-1] <= -1, z[t] > -1) AND TEMA(9) crossed above EMA(50) within the last 6 bars",
+   "entry_sell": "close crosses back below VWAP + 1 sd (z[t-1] >= 1, z[t] < 1) AND TEMA(9) crossed below EMA(50) within the last 6 bars",
+   "execution": "at the signal bar's close",
+   "exit": "fixed: close of the 23rd bar after entry (one Globex session); no stop, no target",
+   "positions": "one per market, signals while open ignored, no pyramiding",
+   "sizing": "one-session 1-sigma move = 0.25% of capital, trailing hourly vol (EWMA span 460) at entry",
+   "costs": [
+    "quant.costs reference (IBKR $0.85/side + exchange + NFA + spread)",
+    "challenge: $2.50/side all-in + spread"
+   ]
+  },
+  "success_criterion": "CONFIRMED only if, at reference costs, portfolio Sharpe > 0 AND mean net per trade > 0 AND random-timing null p < 0.05 (200 draws, session permutation within month shared across markets). Anything else: NOT CONFIRMED.",
+  "parameters_frozen": true
+ },
+ "reference": {
+  "days": 128,
+  "ann_ret": 0.08535131473965878,
+  "ann_vol": 0.05959876547796634,
+  "sharpe": 1.4320987029708387,
+  "sharpe_ci": [
+   -0.6416150552144142,
+   3.1154813654470277
+  ],
+  "max_dd": -0.021420186468175784,
+  "months": 6,
+  "t_monthly": 1.0413537527414847,
+  "t_daily": 1.0206519410590895,
+  "sharpe_ex_top3": -0.26507729018481074,
+  "trades": 125,
+  "trades_per_day": 0.9765625,
+  "concurrent": 0.3375826251180359,
+  "trade_mean_R": 0.13872975602128668,
+  "trade_t": 1.4941045816389271,
+  "win_rate": 0.528,
+  "halves": [
+   2.380300589493282,
+   0.09514051899105566
+  ],
+  "per_market_R": {
+   "6B": 0.041,
+   "6E": -2.578,
+   "6J": -0.444,
+   "CL": -2.549,
+   "ES": 7.154,
+   "HG": -0.6,
+   "NG": 3.15,
+   "NQ": 2.784,
+   "RTY": 0.266,
+   "YM": -0.25,
+   "ZB": 6.283,
+   "ZN": 4.083
+  },
+  "mean_market_sharpe": 0.419599997785777,
+  "avg_pair_corr": 0.04545991851343828
+ },
+ "challenge": {
+  "days": 128,
+  "ann_ret": 0.08472000641297289,
+  "ann_vol": 0.059599577406629356,
+  "sharpe": 1.4214866967085131,
+  "sharpe_ci": [
+   -0.6548933980064582,
+   3.101694673017578
+  ],
+  "max_dd": -0.021471164301353873,
+  "months": 6,
+  "t_monthly": 1.0340277218035363,
+  "t_daily": 1.013088799798152,
+  "sharpe_ex_top3": -0.2801896086734655,
+  "trades": 125,
+  "trades_per_day": 0.9765625,
+  "concurrent": 0.3375826251180359,
+  "trade_mean_R": 0.1377036294712448,
+  "trade_t": 1.483572636394658,
+  "win_rate": 0.528,
+  "halves": [
+   2.37175542889844,
+   0.08095340112769012
+  ],
+  "per_market_R": {
+   "6B": 0.04,
+   "6E": -2.579,
+   "6J": -0.445,
+   "CL": -2.549,
+   "ES": 7.152,
+   "HG": -0.601,
+   "NG": 3.149,
+   "NQ": 2.783,
+   "RTY": 0.262,
+   "YM": -0.252,
+   "ZB": 6.245,
+   "ZN": 4.008
+  },
+  "mean_market_sharpe": 0.41571433578508127,
+  "avg_pair_corr": 0.04548102297026425
+ },
+ "null_p": 0.06965174129353234,
+ "null_median": -0.7768000134763302,
+ "confirmed": false,
+ "monthly": {
+  "2025-10": 0.03873957520117188,
+  "2025-11": 0.012029957768254551,
+  "2025-12": -0.0094378599183369,
+  "2026-01": 6.565612463571568e-05,
+  "2026-02": 0.003971616875904527,
+  "2026-03": -0.0020531600382762694
+ },
+ "trades_by_month": {
+  "2025-10": 21,
+  "2025-11": 22,
+  "2025-12": 13,
+  "2026-01": 24,
+  "2026-02": 22,
+  "2026-03": 23
+ }
+}

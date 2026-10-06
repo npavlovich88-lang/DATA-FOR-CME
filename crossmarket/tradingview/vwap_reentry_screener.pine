@@ -1,0 +1,210 @@
+// This Pine Script(R) code is subject to the terms of the Mozilla Public License 2.0
+// https://mozilla.org/MPL/2.0/
+//
+// QUARTERLY VWAP RE-ENTRY SCREENER -- the T84 rule, watched across 12 CME futures at once.
+//
+// WHAT IT LOOKS FOR (1-hour bars, whatever the chart timeframe):
+//   BUY   close crosses back ABOVE the quarterly VWAP's lower 1-sd band
+//         AND TEMA(9) crossed ABOVE EMA(50) within the last 6 hourly bars
+//   SELL  close crosses back BELOW the quarterly VWAP's upper 1-sd band
+//         AND TEMA(9) crossed BELOW EMA(50) within the last 6 hourly bars
+//   EXIT  23 hourly bars later (about one Globex session). No stop, no target in the tested rule.
+//   The first 5 sessions of each quarter are skipped: the bands are still forming.
+//
+// HONEST STATUS OF THE RULE (research log T82-T86): positive on train (Sharpe +1.8) and
+// validate (+1.4, not significant), NEGATIVE on the holdout (Apr-Oct 2026, -0.25). It is an
+// UNPROVEN idea. This screener is a watch list for manual trading, not a signal service.
+//
+// HOW TO READ THE TABLE
+//   z        distance from the quarterly VWAP in band sd (-1 = on the lower band)
+//   trend    TEMA9 vs EMA50 on the hourly chart
+//   x-up/x-dn hourly bars since the last TEMA/EMA cross up / down
+//   status   SIGNAL BUY/SELL   the rule fired on the last CLOSED hourly bar
+//            WATCH BUY/SELL    price is at or beyond a band; "armed" = a matching cross is
+//                              fresh, so a re-entry inside the band would fire the rule
+//            warm-up           first 5 sessions of the quarter
+//   size     contracts for the chosen risk per trade (one-session 1-sd move = risk x account)
+//
+// Values are taken from the last CLOSED hourly bar (no repainting). Continuous contracts are
+// requested back-adjusted so a roll does not drag the VWAP across two contract months, as in
+// the research. Executing is manual: the challenge does not permit algorithmic trading.
+
+//@version=6
+indicator("Q-VWAP re-entry screener (T84 rule)", shorttitle = "QVWAP screener", overlay = true, max_labels_count = 50)
+
+// ----------------------------------------------------------------------------- inputs
+grpS = "Markets (any CME futures symbol works)"
+s01 = input.symbol("CME_MINI:ES1!", "1", group = grpS)
+s02 = input.symbol("CME_MINI:NQ1!", "2", group = grpS)
+s03 = input.symbol("CME_MINI:RTY1!", "3", group = grpS)
+s04 = input.symbol("CBOT_MINI:YM1!", "4", group = grpS)
+s05 = input.symbol("CBOT:ZB1!", "5", group = grpS)
+s06 = input.symbol("CBOT:ZN1!", "6", group = grpS)
+s07 = input.symbol("NYMEX:CL1!", "7", group = grpS)
+s08 = input.symbol("NYMEX:NG1!", "8", group = grpS)
+s09 = input.symbol("COMEX:HG1!", "9", group = grpS)
+s10 = input.symbol("CME:6E1!", "10", group = grpS)
+s11 = input.symbol("CME:6B1!", "11", group = grpS)
+s12 = input.symbol("CME:6J1!", "12", group = grpS)
+
+grpR = "Rule (tested values -- changing them means trading an untested rule)"
+bandK     = input.float(1.0, "Band (sd)", minval = 0.1, step = 0.1, group = grpR)
+recentN   = input.int(6, "Cross must be within (hourly bars)", minval = 1, group = grpR)
+temaLen   = input.int(9, "TEMA length", minval = 1, group = grpR)
+emaLen    = input.int(50, "EMA length", minval = 1, group = grpR)
+skipSess  = input.int(5, "Skip first N sessions of the quarter", minval = 0, group = grpR)
+holdBars  = input.int(23, "Hold (hourly bars)", minval = 1, group = grpR)
+
+grpW = "Watch list"
+nearZ     = input.float(0.25, "WATCH when within this many sd of a band", minval = 0.0, step = 0.05, group = grpW)
+
+grpP = "Position size"
+account   = input.float(999000, "Account balance ($)", group = grpP)
+riskPct   = input.float(1.5, "Risk per trade (% of account per one-session 1-sd move)", step = 0.25, group = grpP)
+useBack   = input.bool(true, "Back-adjusted continuous contracts", group = grpP)
+
+grpD = "Display"
+showChartBands = input.bool(true, "Plot quarterly VWAP bands on this chart", group = grpD)
+tablePos  = input.string("top right", "Table position", options = ["top right", "top left", "bottom right", "bottom left"], group = grpD)
+
+// ----------------------------------------------------------------------------- the rule, on one symbol
+tema(src, len) =>
+    e1 = ta.ema(src, len)
+    e2 = ta.ema(e1, len)
+    e3 = ta.ema(e2, len)
+    3 * e1 - 3 * e2 + e3
+
+// Everything is computed on the requested 1-hour series. Returns the state of the PREVIOUS
+// (closed) bar: with lookahead on, that is the last completed hour -- no repainting.
+qvwapState() =>
+    newQ = timeframe.change("3M")
+    [vw, up, lo] = ta.vwap(hlc3, newQ, bandK)
+    sd = (up - vw) / bandK
+    z = sd > 0 ? (close - vw) / sd : na
+    t = tema(close, temaLen)
+    e = ta.ema(close, emaLen)
+    bsUp = ta.barssince(ta.crossover(t, e))
+    bsDn = ta.barssince(ta.crossunder(t, e))
+    var int sess = 0
+    if newQ
+        sess := 0
+    if timeframe.change("D")
+        sess += 1
+    warm = sess <= skipSess
+    armedUp = not na(bsUp) and bsUp < recentN
+    armedDn = not na(bsDn) and bsDn < recentN
+    buy  = not warm and not na(z[1]) and z[1] <= -bandK and z > -bandK and armedUp
+    sell = not warm and not na(z[1]) and z[1] >= bandK and z < bandK and armedDn
+    r = math.log(close / close[1])
+    sigma1s = math.sqrt(ta.ema(r * r, 460) * 23)  // one-session 1-sd move, fraction of price
+    contracts = account * riskPct / 100 / (sigma1s * close * syminfo.pointvalue)
+    trendUp = t > e
+    [z[1], trendUp[1], bsUp[1], bsDn[1], buy[1], sell[1], warm[1], armedUp[1], armedDn[1], contracts[1], close[1]]
+
+sym(s) => useBack ? ticker.modify(s, backadjustment = backadjustment.on) : s
+
+// Closed-bar values: the function already returns the previous bar, requested with lookahead
+// on -- the standard non-repainting form for request.security.
+get(s) =>
+    request.security(sym(s), "60", qvwapState(), lookahead = barmerge.lookahead_on, ignore_invalid_symbol = true)
+
+short(s) =>
+    parts = str.split(s, ":")
+    array.size(parts) > 1 ? array.get(parts, 1) : s
+
+[z01, tu01, xu01, xd01, b01, sl01, w01, au01, ad01, n01, c01] = get(s01)
+[z02, tu02, xu02, xd02, b02, sl02, w02, au02, ad02, n02, c02] = get(s02)
+[z03, tu03, xu03, xd03, b03, sl03, w03, au03, ad03, n03, c03] = get(s03)
+[z04, tu04, xu04, xd04, b04, sl04, w04, au04, ad04, n04, c04] = get(s04)
+[z05, tu05, xu05, xd05, b05, sl05, w05, au05, ad05, n05, c05] = get(s05)
+[z06, tu06, xu06, xd06, b06, sl06, w06, au06, ad06, n06, c06] = get(s06)
+[z07, tu07, xu07, xd07, b07, sl07, w07, au07, ad07, n07, c07] = get(s07)
+[z08, tu08, xu08, xd08, b08, sl08, w08, au08, ad08, n08, c08] = get(s08)
+[z09, tu09, xu09, xd09, b09, sl09, w09, au09, ad09, n09, c09] = get(s09)
+[z10, tu10, xu10, xd10, b10, sl10, w10, au10, ad10, n10, c10] = get(s10)
+[z11, tu11, xu11, xd11, b11, sl11, w11, au11, ad11, n11, c11] = get(s11)
+[z12, tu12, xu12, xd12, b12, sl12, w12, au12, ad12, n12, c12] = get(s12)
+
+// ----------------------------------------------------------------------------- status text
+status(z, buy, sell, warm, au, ad) =>
+    string st = "-"
+    if na(z)
+        st := "no data"
+    else if warm
+        st := "warm-up"
+    else if buy
+        st := "SIGNAL BUY"
+    else if sell
+        st := "SIGNAL SELL"
+    else if z <= -(bandK - nearZ)
+        st := au ? "WATCH BUY armed" : "WATCH BUY"
+    else if z >= bandK - nearZ
+        st := ad ? "WATCH SELL armed" : "WATCH SELL"
+    st
+
+statusColor(st) =>
+    st == "SIGNAL BUY" ? color.new(color.green, 0) : st == "SIGNAL SELL" ? color.new(color.red, 0) :
+     str.startswith(st, "WATCH BUY") ? color.new(color.green, 70) : str.startswith(st, "WATCH SELL") ? color.new(color.red, 70) :
+     color.new(color.gray, 85)
+
+fmtBars(x) => na(x) ? "-" : str.tostring(x)
+
+var table tb = table.new(tablePos == "top right" ? position.top_right : tablePos == "top left" ? position.top_left : tablePos == "bottom right" ? position.bottom_right : position.bottom_left, 7, 14, border_width = 1)
+
+row(i, s, z, tu, xu, xd, buy, sell, warm, au, ad, n) =>
+    st = status(z, buy, sell, warm, au, ad)
+    bg = statusColor(st)
+    table.cell(tb, 0, i, short(s), bgcolor = bg, text_size = size.small)
+    table.cell(tb, 1, i, na(z) ? "-" : str.tostring(z, "#.00"), bgcolor = bg, text_size = size.small)
+    table.cell(tb, 2, i, tu ? "TEMA>EMA" : "TEMA<EMA", bgcolor = bg, text_size = size.small)
+    table.cell(tb, 3, i, fmtBars(xu), bgcolor = bg, text_size = size.small)
+    table.cell(tb, 4, i, fmtBars(xd), bgcolor = bg, text_size = size.small)
+    table.cell(tb, 5, i, st, bgcolor = bg, text_size = size.small)
+    table.cell(tb, 6, i, na(n) ? "-" : str.tostring(n, "#.#"), bgcolor = bg, text_size = size.small)
+    st
+
+if barstate.islast
+    hdr = array.from("market", "z", "trend", "x-up", "x-dn", "status", "size")
+    for c = 0 to 6
+        table.cell(tb, c, 0, array.get(hdr, c), bgcolor = color.new(color.blue, 60), text_size = size.small)
+    row(1, s01, z01, tu01, xu01, xd01, b01, sl01, w01, au01, ad01, n01)
+    row(2, s02, z02, tu02, xu02, xd02, b02, sl02, w02, au02, ad02, n02)
+    row(3, s03, z03, tu03, xu03, xd03, b03, sl03, w03, au03, ad03, n03)
+    row(4, s04, z04, tu04, xu04, xd04, b04, sl04, w04, au04, ad04, n04)
+    row(5, s05, z05, tu05, xu05, xd05, b05, sl05, w05, au05, ad05, n05)
+    row(6, s06, z06, tu06, xu06, xd06, b06, sl06, w06, au06, ad06, n06)
+    row(7, s07, z07, tu07, xu07, xd07, b07, sl07, w07, au07, ad07, n07)
+    row(8, s08, z08, tu08, xu08, xd08, b08, sl08, w08, au08, ad08, n08)
+    row(9, s09, z09, tu09, xu09, xd09, b09, sl09, w09, au09, ad09, n09)
+    row(10, s10, z10, tu10, xu10, xd10, b10, sl10, w10, au10, ad10, n10)
+    row(11, s11, z11, tu11, xu11, xd11, b11, sl11, w11, au11, ad11, n11)
+    row(12, s12, z12, tu12, xu12, xd12, b12, sl12, w12, au12, ad12, n12)
+    table.cell(tb, 0, 13, "exit " + str.tostring(holdBars) + " hourly bars after entry | risk " + str.tostring(riskPct) + "% | UNPROVEN: failed holdout", text_size = size.tiny)
+    table.merge_cells(tb, 0, 13, 6, 13)
+
+// ----------------------------------------------------------------------------- alerts
+// Create ONE alert on this indicator with "Any alert() function call"; it fires once per
+// closed hourly bar for every market that signals.
+alertSig(s, buy, sell, n) =>
+    if buy or sell
+        alert(short(s) + (buy ? " BUY " : " SELL ") + "Q-VWAP re-entry, ~" + str.tostring(n, "#.#") + " contracts, exit after " + str.tostring(holdBars) + " hourly bars", alert.freq_once_per_bar)
+
+if barstate.isrealtime and timeframe.change("60")
+    alertSig(s01, b01, sl01, n01)
+    alertSig(s02, b02, sl02, n02)
+    alertSig(s03, b03, sl03, n03)
+    alertSig(s04, b04, sl04, n04)
+    alertSig(s05, b05, sl05, n05)
+    alertSig(s06, b06, sl06, n06)
+    alertSig(s07, b07, sl07, n07)
+    alertSig(s08, b08, sl08, n08)
+    alertSig(s09, b09, sl09, n09)
+    alertSig(s10, b10, sl10, n10)
+    alertSig(s11, b11, sl11, n11)
+    alertSig(s12, b12, sl12, n12)
+
+// ----------------------------------------------------------------------------- this chart's own bands
+[cvw, cup, clo] = ta.vwap(hlc3, timeframe.change("3M"), bandK)
+plot(showChartBands ? cvw : na, "Q-VWAP", color.orange, 2)
+plot(showChartBands ? cup : na, "+band", color.new(color.red, 30))
+plot(showChartBands ? clo : na, "-band", color.new(color.green, 30))
